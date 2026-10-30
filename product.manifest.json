@@ -1,0 +1,43 @@
+{
+  "$schema": "https://trucking.platform.io/schemas/subproduct-manifest-v1.json",
+  "id": "product-06-warehouse-space-flow",
+  "name": "Warehouse Space & Flow Planner",
+  "shortName": "Warehouse Space",
+  "code": "P06",
+  "version": "1.0.0",
+  "port": 5178,
+  "icon": "\ud83c\udfed",
+  "description": "Multi-constraint spatial operations, dual-role moveable container tracking, inbound putaway allocation, and GS1 EPCIS scan verification.",
+  "category": "operations",
+  "entitlementKey": "warehouse_space_flow",
+  "routes": {
+    "dev": "http://localhost:5178",
+    "cloud": "https://warehouseflow.pages.dev"
+  },
+  "pricingTier": {
+    "tierName": "Spatial Operations Pro",
+    "monthlyPriceUsd": 219,
+    "description": "Multi-facility 2D/3D layout modeling, constraint-aware inbound putaway optimizer, dual-role container tracking, and GS1 EPCIS audit streams."
+  },
+  "bridges": {
+    "consumes": [
+      {
+        "from": "product-01-cargo-fit",
+        "protocol": "OLLP-v1",
+        "action": "import_inbound_manifest"
+      },
+      {
+        "from": "product-04-asset-studio",
+        "protocol": "OLAS-v1",
+        "action": "load_packaging_twins"
+      }
+    ],
+    "produces": [
+      {
+        "to": "command-center-portal",
+        "protocol": "OWSP-v1",
+        "action": "stream_capacity_telemetry"
+      }
+    ]
+  }
+}
