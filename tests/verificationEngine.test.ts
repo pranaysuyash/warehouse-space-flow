@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createCanonicalFacility } from '../src/engine/spatialModel';
 import { createCanonical40PalletManifest } from '../src/engine/inboundManifest';
 import { solvePutawayManifest } from '../src/engine/putawayEngine';
-import { executeScanVerification, publishEpcisEvent, noopEpcisPublisher } from '../src/engine/verificationEngine';
+import { executeScanVerification, publishEpcisEvent, noopEpcisPublisher, createHttpEpcisPublisher } from '../src/engine/verificationEngine';
 
 describe('P06 Scan Verification & GS1 EPCIS 2.0 Audits', () => {
   it('confirms putaway and generates compliant EPCIS ObjectEvent when barcode matches assigned bin', () => {
@@ -88,5 +88,65 @@ describe('P06 EPCIS publisher port', () => {
     const out = await publishEpcisEvent(baseEvent, pub);
     expect(out.verificationStatus).toBe('published');
     expect(out.verificationEvidence.notes).toContain('Published: RCPT-1');
+  });
+});
+
+describe('P06 HttpEpcisPublisher adapter', () => {
+  const event = {
+    eventId: 'urn:uuid:test-http-evt',
+    eventType: 'ObjectEvent' as const,
+    eventTime: new Date().toISOString(),
+    action: 'OBSERVE' as const,
+    bizStep: 'putting_away',
+    disposition: 'active',
+    epcList: ['urn:epc:id:sscc:0614141.123'],
+    readPoint: 'urn:epc:id:sgln:0614141.00001.A1',
+    bizLocation: 'urn:epc:id:sgln:0614141.00001.SLOT-A1',
+    verificationEvidence: { scanType: 'BARCODE_2D_DATAMATRIX' as const, operatorId: 'OPR-1', verifiedTimestamp: new Date().toISOString(), notes: 'verified' },
+    verificationStatus: 'simulated' as const,
+  };
+
+  it('marks published only when 2xx JSON confirms published:true', async () => {
+    const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ published: true, receiptId: 'epcis-42' }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const pub = createHttpEpcisPublisher({ endpoint: 'https://epcis.example.test/capture', fetchImpl });
+    const out = await publishEpcisEvent(event, pub);
+    expect(out.verificationStatus).toBe('published');
+    expect(out.verificationEvidence.notes).toContain('epcis-42');
+  });
+
+  it('does not mark published on 2xx without explicit confirmation', async () => {
+    const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ ok: true }), { status: 200 });
+    const pub = createHttpEpcisPublisher({ endpoint: 'https://epcis.example.test/capture', fetchImpl });
+    const out = await publishEpcisEvent(event, pub);
+    expect(out.verificationStatus).not.toBe('published');
+  });
+
+  it('does not mark published on non-2xx response', async () => {
+    const fetchImpl: typeof fetch = async () => new Response('unauthorized', { status: 401 });
+    const pub = createHttpEpcisPublisher({ endpoint: 'https://epcis.example.test/capture', fetchImpl });
+    const out = await publishEpcisEvent(event, pub);
+    expect(out.verificationStatus).not.toBe('published');
+  });
+
+  it('does not mark published when fetch throws', async () => {
+    const fetchImpl: typeof fetch = async () => { throw new Error('network down'); };
+    const pub = createHttpEpcisPublisher({ endpoint: 'https://epcis.example.test/capture', fetchImpl });
+    const out = await publishEpcisEvent(event, pub);
+    expect(out.verificationStatus).not.toBe('published');
+  });
+
+  it('sends JSON event payload with configured headers', async () => {
+    let seen: { url: string; init?: RequestInit } | null = null;
+    const fetchImpl: typeof fetch = async (url, init) => {
+      seen = { url: String(url), init };
+      return new Response(JSON.stringify({ published: true }), { status: 200 });
+    };
+    const pub = createHttpEpcisPublisher({ endpoint: 'https://epcis.example.test/capture', headers: { Authorization: 'Bearer test' }, fetchImpl });
+    await publishEpcisEvent(event, pub);
+    expect(seen).not.toBeNull();
+    const req = seen!;
+    expect(req.url).toBe('https://epcis.example.test/capture');
+    expect((req.init?.headers as Record<string, string>).Authorization).toBe('Bearer test');
+    expect(JSON.parse(String(req.init?.body))).toHaveProperty('event.eventId', 'urn:uuid:test-http-evt');
   });
 });
