@@ -38,7 +38,7 @@ export const Warehouse2DPlanner: React.FC = () => {
     solvePutawayManifest(createCanonicalFacility(), createCanonical40PalletManifest())
   );
 
-  const [selectedPalletId, setSelectedPalletId] = useState<string | null>('PLT-INB-01');
+  const [selectedPalletId, setSelectedPalletId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'proposed' | 'alternative' | 'conflict'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
