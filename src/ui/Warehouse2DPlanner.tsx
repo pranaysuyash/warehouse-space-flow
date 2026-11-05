@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Facility,
   InboundManifest,
@@ -29,7 +29,9 @@ import {
   translateCargoFitLoadToInboundManifest,
 } from '../engine/cargoFitBridge';
 
-export const Warehouse2DPlanner: React.FC = () => {
+export const Warehouse2DPlanner: React.FC<{ onWorkspaceChange?: (s: { facility: Facility | null; manifest: InboundManifest | null }) => void }> = ({ onWorkspaceChange }) => {
+  const onWorkspaceChangeRef = useRef(onWorkspaceChange);
+  onWorkspaceChangeRef.current = onWorkspaceChange;
   const session = useShipmentSession();
   const [facility, setFacility] = useState<Facility | null>(null);
   const [manifest, setManifest] = useState<InboundManifest | null>(null);
@@ -74,6 +76,10 @@ export const Warehouse2DPlanner: React.FC = () => {
   }, [session?.shipment, session?.resources, session?.selectedId, draft.dirty, draft.incoming, facility]);
   // Facility Metrics
   const metrics = useMemo(() => displayedFacility ? computeFacilityMetrics(displayedFacility) : null, [displayedFacility]);
+
+  useEffect(() => {
+    onWorkspaceChangeRef.current?.({ facility: displayedFacility ?? facility ?? null, manifest: manifest ?? null });
+  }, [displayedFacility, facility, manifest]);
 
   // Filtered Recommendations
   const filteredRecommendations = useMemo(() => {

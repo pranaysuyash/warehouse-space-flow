@@ -9,6 +9,7 @@ import { CrossDockModal } from './CrossDockModal';
 import { CycleCountModal } from './CycleCountModal';
 import { AbcReslottingModal } from './AbcReslottingModal';
 import { GoodsLedgerModal } from './GoodsLedgerModal';
+import type { Facility, InboundManifest } from '../engine/types';
 
 export function App() {
   const session = useShipmentSession();
@@ -18,10 +19,13 @@ export function App() {
   const [isCycleCountModalOpen, setIsCycleCountModalOpen] = useState<boolean>(false);
   const [isAbcModalOpen, setIsAbcModalOpen] = useState<boolean>(false);
   const [isGoodsLedgerModalOpen, setIsGoodsLedgerModalOpen] = useState<boolean>(false);
+  const [workspaceSnapshot, setWorkspaceSnapshot] = useState<{ facility: Facility | null; manifest: InboundManifest | null } | null>(null);
 
   const sessionFacility = session?.selectedId && session.shipment
     ? facilityForShipment(session.shipment, session.resources)
     : null;
+  const modalFacility = workspaceSnapshot?.facility ?? sessionFacility;
+  const modalManifest = workspaceSnapshot?.manifest ?? null;
 
   return (
     <div className="subproduct-root warehouse-app-container">
@@ -91,7 +95,7 @@ export function App() {
         </header>
 
         {/* Dynamic Operational Content */}
-        <div hidden={viewMode !== '2d'}><Warehouse2DPlanner /></div>
+        <div hidden={viewMode !== '2d'}><Warehouse2DPlanner onWorkspaceChange={(snapshot) => setWorkspaceSnapshot(snapshot)} /></div>
         {viewMode === '3d' && (
           sessionFacility ? (
             <><p className="execution-task-note">Facility geometry study for the selected shipment scenario. This view does not change shipment reservations or establish physical occupancy.</p><WarehouseIsometricCanvas facility={sessionFacility} /></>
@@ -117,16 +121,20 @@ export function App() {
       <CycleCountModal
         isOpen={isCycleCountModalOpen}
         onClose={() => setIsCycleCountModalOpen(false)}
+        facility={modalFacility}
       />
 
       <AbcReslottingModal
         isOpen={isAbcModalOpen}
         onClose={() => setIsAbcModalOpen(false)}
+        facility={modalFacility}
+        manifest={modalManifest}
       />
 
       <GoodsLedgerModal
         isOpen={isGoodsLedgerModalOpen}
         onClose={() => setIsGoodsLedgerModalOpen(false)}
+        manifest={modalManifest}
       />
     </div>
   );

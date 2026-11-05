@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GoodsLedger } from '../engine/goodsLedger';
+import type { InboundManifest } from '../engine/types';
 
 export interface GoodsLedgerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  manifest?: InboundManifest | null;
 }
 
-export const GoodsLedgerModal: React.FC<GoodsLedgerModalProps> = ({ isOpen, onClose }) => {
+export const GoodsLedgerModal: React.FC<GoodsLedgerModalProps> = ({ isOpen, onClose, manifest }) => {
   const [ledger] = useState(() => new GoodsLedger());
   const [customerId, setCustomerId] = useState('CUST-001');
   const [sku, setSku] = useState('SKU-001');
@@ -14,6 +16,15 @@ export const GoodsLedgerModal: React.FC<GoodsLedgerModalProps> = ({ isOpen, onCl
   const [unit, setUnit] = useState('cases');
   const [log, setLog] = useState<string[]>([]);
   const [onHand, setOnHand] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !manifest?.items?.[0]) return;
+    const item = manifest.items[0] as typeof manifest.items[number] & { cases?: number; quantity?: number; unit?: string; customerId?: string };
+    setSku(item.sku);
+    setCustomerId(item.customerId ?? 'CUST-001');
+    setUnit(item.unit ?? 'cases');
+    setQuantity(item.cases ?? item.quantity ?? 10);
+  }, [isOpen, manifest]);
 
   if (!isOpen) return null;
 
@@ -41,6 +52,9 @@ export const GoodsLedgerModal: React.FC<GoodsLedgerModalProps> = ({ isOpen, onCl
     <div role="dialog" aria-modal="true" aria-labelledby="goods-ledger-title" style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(2,6,23,0.75)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ width:'100%', maxWidth:640, background:'#0b1329', border:'1px solid #1e293b', borderRadius:12, padding:20, fontFamily:'system-ui,sans-serif', color:'#e2e8f0' }}>
         <h2 id="goods-ledger-title" style={{ margin:'0 0 12px' }}>Goods Ledger (Customer Stock)</h2>
+        <p style={{ margin:'0 0 12px', fontSize:12, color:'#94a3b8' }}>
+          {manifest ? `Prefilled from workspace manifest (${manifest.items.length} items). Entries are local to this modal session and are not saved to workspace/server state.` : 'Manual/local ledger entries. Not saved to workspace/server state.'}
+        </p>
         <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
           <input aria-label="Customer id" value={customerId} onChange={e=>setCustomerId(e.target.value)} placeholder="Customer id" style={{ padding:6, background:'#0f172a', color:'#e2e8f0', border:'1px solid #334155', borderRadius:6 }} />
           <input aria-label="SKU" value={sku} onChange={e=>setSku(e.target.value)} placeholder="SKU" style={{ padding:6, background:'#0f172a', color:'#e2e8f0', border:'1px solid #334155', borderRadius:6 }} />
