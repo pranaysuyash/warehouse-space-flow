@@ -18,7 +18,7 @@ import {
 } from '../engine/spatialModel';
 import { createCanonical40PalletManifest } from '../engine/inboundManifest';
 import { solvePutawayManifest } from '../engine/putawayEngine';
-import { executeScanVerification } from '../engine/verificationEngine';
+import { executeScanVerification, publishEpcisEvent, noopEpcisPublisher } from '../engine/verificationEngine';
 import { useShipmentSession } from '../suite/ShipmentSession';
 import { useShipmentDraft } from '../suite/useShipmentDraft';
 import { facilityForShipment, inboundForShipment, planningFacility, resultForReceivingPlan } from '../engine/shipmentAdapter';
@@ -165,7 +165,7 @@ export const Warehouse2DPlanner: React.FC = () => {
   };
 
   // Scan & Putaway Verification
-  const handleVerifyPutaway = (rec: PutawayRecommendation, simulateError = false) => {
+  const handleVerifyPutaway = async (rec: PutawayRecommendation, simulateError = false) => {
     const targetCode = simulateError ? 'WRONG-SLOT-99' : rec.targetLocationCode;
     const newFacility = JSON.parse(JSON.stringify(facility)) as Facility;
 
@@ -173,7 +173,10 @@ export const Warehouse2DPlanner: React.FC = () => {
 
     if (result.success && result.slotUpdated && result.eventGenerated) {
       setFacility(newFacility);
-      setEpcisEvents((prev) => [result.eventGenerated!, ...prev]);
+      // Publish via the configured publisher (noop by default -> stays simulated/observed, never falsely "published").
+      const publisher = (window as unknown as { __EPCIS_PUBLISHER__?: { publish: (e: unknown) => Promise<{ published: boolean; receiptId?: string; error?: string }> } }).__EPCIS_PUBLISHER__ ?? noopEpcisPublisher;
+      const publishedEvent = await publishEpcisEvent(result.eventGenerated!, publisher as never);
+      setEpcisEvents((prev) => [publishedEvent, ...prev]);
       setNotification({ type: 'success', message: result.message });
     } else {
       if (result.discrepancyReport) {
