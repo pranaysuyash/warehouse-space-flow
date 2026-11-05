@@ -62,6 +62,8 @@ export interface LocationSlot {
   currentWeightLbs?: number;
   /** Maintained temperature range for this slot (°F). Used to reject commodity temperature mismatches. */
   temperatureRangeF?: { min: number; max: number };
+  /** DOT hazmat class of the current occupant, when known. Enables segregation checks. */
+  hazmatClass?: string;
   reservedWeightLbs?: number;
 }
 

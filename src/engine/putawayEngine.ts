@@ -14,10 +14,18 @@ import {
   PutawayStatus,
 } from './types';
 import { getAllSlots, findZoneBySlotId } from './spatialModel';
+import type { HazmatPolicyConfig } from './hazmatPolicy';
+import { applyHazmatPolicy } from './hazmatPolicy';
+import type { HazmatClass } from './hazmatCompatibility';
+
+export interface PutawayOptions {
+  hazmatPolicy?: HazmatPolicyConfig;
+}
 
 export function solvePutawayManifest(
   facility: Facility,
-  manifest: InboundManifest
+  manifest: InboundManifest,
+  options: PutawayOptions = {}
 ): PutawaySolveSummary {
   const allSlots = getAllSlots(facility);
   // Track reserved slot IDs within this solve run to prevent double-booking
@@ -44,7 +52,7 @@ export function solvePutawayManifest(
   const orderedItems = [...manifest.items].sort((a, b) =>
     candidateCounts.get(a.palletId)! - candidateCounts.get(b.palletId)! || Number(b.groundOnly) - Number(a.groundOnly) || b.weightLbs - a.weightLbs);
   for (const item of orderedItems) {
-    const evalResult = evaluatePalletPlacement(item, allSlots, allocatedSlotIds, facility, plannedWeights);
+    const evalResult = evaluatePalletPlacement(item, allSlots, allocatedSlotIds, facility, plannedWeights, options);
 
     if (evalResult.targetSlotId) {
       allocatedSlotIds.add(evalResult.targetSlotId);
@@ -110,7 +118,8 @@ function evaluatePalletPlacement(
   allSlots: LocationSlot[],
   allocatedSlotIds: Set<string>,
   facility: Facility,
-  plannedWeights: Map<string, number>
+  plannedWeights: Map<string, number>,
+  options: PutawayOptions = {}
 ): PutawayRecommendation {
   const violationsCollected: string[] = [];
   const validCandidates: SlotCandidateScore[] = [];
@@ -140,7 +149,12 @@ function evaluatePalletPlacement(
   }
 
   for (const slot of openSlots) {
-    const check = checkSlotSuitability(item, slot);
+    const coLocatedHazmatClasses = options.hazmatPolicy
+      ? allSlots
+          .filter(s => s.zoneId === slot.zoneId && s.id !== slot.id && (s.status !== 'available' || allocatedSlotIds.has(s.id)) && s.hazmatClass)
+          .map(s => s.hazmatClass as string)
+      : [];
+    const check = checkSlotSuitability(item, slot, { hazmatPolicy: options.hazmatPolicy, coLocatedHazmatClasses });
     const bay = bayCapacityForSlot(slot, allSlots, plannedWeights);
     if (check.compatible && bay && bay.usedWeightLbs + item.weightLbs > bay.maxWeightLbs) {
       violationsCollected.push(`Shared rack bay ${bay.key} weight would exceed ${bay.maxWeightLbs} lbs (${bay.usedWeightLbs} lbs already committed).`);
@@ -235,7 +249,16 @@ export function defaultTempRangeForClass(cls: string): { min: number; max: numbe
   }
 }
 
-export function checkSlotSuitability(item: Pick<InboundPalletItem, 'environmentalClass' | 'packageType' | 'weightLbs' | 'dimensions' | 'groundOnly' | 'storageTempRangeF'>, slot: LocationSlot): SuitabilityCheck {
+export interface SuitabilityOptions {
+  hazmatPolicy?: HazmatPolicyConfig;
+  coLocatedHazmatClasses?: string[];
+}
+
+export function checkSlotSuitability(
+  item: Pick<InboundPalletItem, 'environmentalClass' | 'packageType' | 'weightLbs' | 'dimensions' | 'groundOnly' | 'storageTempRangeF' | 'hazmatClass'>,
+  slot: LocationSlot,
+  opts: SuitabilityOptions = {}
+): SuitabilityCheck {
   const reasons: string[] = [];
 
   if (!Number.isFinite(item.weightLbs) || item.weightLbs <= 0 || !Object.values(item.dimensions).every(value => Number.isFinite(value) && value > 0) || typeof item.packageType !== 'string' || typeof item.groundOnly !== 'boolean') {
@@ -322,6 +345,21 @@ export function checkSlotSuitability(item: Pick<InboundPalletItem, 'environmenta
       reasons: [],
       violation: `Item requires slab-on-grade ground storage; cannot be elevated to Level ${slot.level}`,
     };
+  }
+
+  // 4a. HazMat segregation / site policy (when specific class is known)
+  if (item.environmentalClass === 'hazmat' && opts.hazmatPolicy && item.hazmatClass) {
+    const co = (opts.coLocatedHazmatClasses ?? []) as HazmatClass[];
+    const policyResult = applyHazmatPolicy(item.hazmatClass as HazmatClass, co, opts.hazmatPolicy);
+    if (!policyResult.compatible) {
+      return {
+        compatible: false,
+        score: 0,
+        isAlternative: false,
+        reasons: [],
+        violation: `HazMat policy conflict: ${policyResult.conflicts.join('; ')}`,
+      };
+    }
   }
 
   // Calculation of fit score and primary vs alternative classification
