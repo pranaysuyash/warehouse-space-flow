@@ -29,12 +29,13 @@ describe('P06 Scan Verification & GS1 EPCIS 2.0 Audits', () => {
     expect(result.eventGenerated).toBeDefined();
     const event = result.eventGenerated!;
     expect(event.eventType).toBe('ObjectEvent');
-    expect(event.action).toBe('ADD');
+    expect(event.action).toBe('OBSERVE');
     expect(event.bizStep).toBe('urn:epcglobal:cbv:bizstep:putting_away');
     expect(event.disposition).toBe('urn:epcglobal:cbv:disp:active');
     expect(event.epcList[0]).toContain(firstProposed!.barcode);
     expect(event.verificationEvidence.operatorId).toBe('OPR-JONES-44');
     expect(event.verificationEvidence.scanType).toBe('BARCODE_2D_DATAMATRIX');
+    expect(event.verificationStatus).toBe('simulated');
   });
 
   it('detects misplaced location discrepancy when scanned code does not match reservation', () => {

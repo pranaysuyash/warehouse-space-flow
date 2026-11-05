@@ -4,6 +4,7 @@ import {
   createSeedMoveableEntities,
   computeFacilityMetrics,
   getAllSlots,
+  createCustomFacility,
 } from '../src/engine/spatialModel';
 
 describe('P06 Spatial Model & Containment Hierarchy', () => {
@@ -68,5 +69,23 @@ describe('P06 Spatial Model & Containment Hierarchy', () => {
     expect(metrics.occupiedSlots).toBeGreaterThan(0);
     expect(metrics.occupancyPercent).toBeGreaterThan(0);
     expect(metrics.occupancyPercent).toBeLessThan(100);
+  });
+});
+
+describe('P06 Custom Facility Factory', () => {
+  it('creates a user-defined facility with zones', () => {
+    const zone = { id: 'Z1', code: 'Z1', name: 'Zone 1', type: 'bulk_floor' as const, canvasBounds: { x: 0, y: 0, width: 100, height: 100 }, color: '#fff', slots: [] };
+    const f = createCustomFacility({ id: 'F-CUSTOM', code: 'FC', name: 'Custom WH', address: 'Addr', totalSquareFeet: 5000, clearHeightFt: 20, zones: [zone] });
+    expect(f.id).toBe('F-CUSTOM');
+    expect(f.zones.length).toBe(1);
+  });
+
+  it('rejects empty zones', () => {
+    expect(() => createCustomFacility({ id: 'F2', code: 'F2', name: 'X', address: 'A', totalSquareFeet: 1000, clearHeightFt: 10, zones: [] })).toThrow();
+  });
+
+  it('rejects non-positive area/height', () => {
+    const zone = { id: 'Z1', code: 'Z1', name: 'Zone 1', type: 'bulk_floor' as const, canvasBounds: { x: 0, y: 0, width: 100, height: 100 }, color: '#fff', slots: [] };
+    expect(() => createCustomFacility({ id: 'F3', code: 'F3', name: 'X', address: 'A', totalSquareFeet: 0, clearHeightFt: 10, zones: [zone] })).toThrow();
   });
 });

@@ -102,7 +102,7 @@ export function executeScanVerification(
     eventId: `urn:uuid:${crypto.randomUUID ? crypto.randomUUID() : 'evt-' + Date.now()}`,
     eventType: 'ObjectEvent',
     eventTime: timestamp,
-    action: 'ADD',
+    action: 'OBSERVE',
     bizStep: 'urn:epcglobal:cbv:bizstep:putting_away',
     disposition: 'urn:epcglobal:cbv:disp:active',
     epcList: [`urn:epc:id:sscc:0614141.${recommendation.barcode}`],
@@ -114,11 +114,12 @@ export function executeScanVerification(
       verifiedTimestamp: timestamp,
       notes: `Putaway verified at bin ${assignedSlot.code}. Mass: ${recommendation.weightLbs} lbs.`,
     },
+    verificationStatus: 'simulated',
   };
 
   return {
     success: true,
-    message: ` Putaway Verified: Pallet ${recommendation.palletId} confirmed at bin ${assignedSlot.code}. GS1 EPCIS event published.`,
+    message: ` Putaway Verified: Pallet ${recommendation.palletId} confirmed at bin ${assignedSlot.code}. GS1 EPCIS event generated locally (verification status: simulated; external publication requires connector).`,
     slotUpdated: assignedSlot,
     eventGenerated: epcisEvent,
   };

@@ -5,6 +5,34 @@
 
 import { Facility, LocationSlot, MoveableEntity, Zone } from './types';
 
+/**
+ * Generic facility factory for user-created facilities.
+ * Allows construction of facilities with custom zones/spaces instead of the
+ * hardcoded canonical DC-04 layout.
+ */
+export function createCustomFacility(input: {
+  id: string;
+  code: string;
+  name: string;
+  address: string;
+  totalSquareFeet: number;
+  clearHeightFt: number;
+  zones: Zone[];
+}): Facility {
+  if (input.totalSquareFeet <= 0) throw new Error('Total square footage must be positive.');
+  if (input.clearHeightFt <= 0) throw new Error('Clear height must be positive.');
+  if (!input.zones || input.zones.length === 0) throw new Error('Facility must have at least one zone.');
+  return {
+    id: input.id,
+    code: input.code,
+    name: input.name,
+    address: input.address,
+    totalSquareFeet: input.totalSquareFeet,
+    clearHeightFt: input.clearHeightFt,
+    zones: input.zones,
+  };
+}
+
 export function createCanonicalFacility(): Facility {
   // 1. Receiving Dock Doors (4 Doors)
   const dockSlots: LocationSlot[] = [1, 2, 3, 4].map((num) => ({
@@ -112,7 +140,7 @@ export function createCanonicalFacility(): Facility {
     name: 'Selective High-Bay Racks (Aisles R01–R03)',
     type: 'high_bay_rack',
     canvasBounds: { x: 20, y: 110, width: 400, height: 290 },
-    color: '#6366f1', // Indigo
+    color: '#475569', // Slate (was indigo)
     slots: rackSlots,
   };
 
@@ -154,6 +182,7 @@ export function createCanonicalFacility(): Facility {
     groundOnlyAllowed: true,
     status: num === 2 ? 'occupied' : 'available',
     currentOccupantId: num === 2 ? 'PRE-DAIRY-PALLET' : undefined,
+    temperatureRangeF: { min: 32, max: 38 },
   }));
 
   const coldZone: Zone = {

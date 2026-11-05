@@ -236,7 +236,6 @@ export const SuiteDock: React.FC<SuiteDockProps> = ({ currentProductId }) => {
           {/* 9-Dots App Switcher Button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Open Trucking Platform Suite Switcher"
             aria-expanded={isMenuOpen}
             style={{
               display: 'flex',
@@ -558,7 +557,7 @@ export const SuiteDock: React.FC<SuiteDockProps> = ({ currentProductId }) => {
                     fontSize: '12px',
                   }}
                 >
-                  <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#818cf8' }}><IconShieldAlert size={14} /> Safety & Telematics</strong>
+                  <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-2)' }}><IconShieldAlert size={14} /> Safety & Telematics</strong>
                   <span style={{ fontSize: '10px', color: '#94a3b8' }}>P03 HOS Planner + P05 Telematics</span>
                 </button>
 

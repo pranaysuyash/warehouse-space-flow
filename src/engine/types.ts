@@ -60,6 +60,8 @@ export interface LocationSlot {
   reservedPalletId?: string;
   /** Declared mass only. Absence is unknown and consumes the slot rating for bay checks. */
   currentWeightLbs?: number;
+  /** Maintained temperature range for this slot (°F). Used to reject commodity temperature mismatches. */
+  temperatureRangeF?: { min: number; max: number };
   reservedWeightLbs?: number;
 }
 
@@ -103,6 +105,8 @@ export interface MoveableEntity {
   dimensions: Dimensions3D;
   weightLbs: number;
   environmentalClass: EnvironmentalClass;
+  /** Required storage temperature range for the commodity (°F). If omitted, derived from environmentalClass. */
+  storageTempRangeF?: { min: number; max: number };
   hazmatClass?: string;
   groundOnly: boolean;
   stackable: boolean;
@@ -124,6 +128,8 @@ export interface InboundPalletItem {
   dimensions: Dimensions3D;
   weightLbs: number;
   environmentalClass: EnvironmentalClass;
+  /** Required storage temperature range for the commodity (°F). If omitted, derived from environmentalClass. */
+  storageTempRangeF?: { min: number; max: number };
   hazmatClass?: string;
   groundOnly: boolean;
   stackable: boolean;
@@ -195,6 +201,8 @@ export interface EpcisEvent {
     verifiedTimestamp: string;
     notes?: string;
   };
+  /** Truth level of this event: simulated (local), observed (verified), published (external). */
+  verificationStatus: 'simulated' | 'observed' | 'published';
 }
 
 export interface DiscrepancyReport {

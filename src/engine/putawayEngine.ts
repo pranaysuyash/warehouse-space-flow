@@ -77,6 +77,34 @@ interface SlotCandidateScore {
   reasons: string[];
 }
 
+
+export interface SlotCostContext {
+  dockOrigin: { x: number; y: number };
+}
+
+
+
+export function environmentalClassFromTempRange(range: { min: number; max: number }): 'ambient' | 'chilled' | 'frozen' | 'hazmat' {
+  // Classify by the range's midpoint and max, not max alone.
+  // A room maintaining 28-34F is chilled, not frozen (frozen requires <= 5F max).
+  // A room maintaining -25 to 5F is frozen.
+  const mid = (range.min + range.max) / 2;
+  if (range.max <= 5) return 'frozen';
+  if (range.max <= 46 && mid >= 28) return 'chilled';
+  if (range.max <= 46 && mid < 28) return 'frozen';
+  return 'ambient';
+}
+export function computePutawayCost(slot: LocationSlot, item: { weightLbs: number }, ctx?: SlotCostContext): number {
+  const origin = ctx?.dockOrigin ?? { x: 30, y: 30 };
+  const dx = slot.canvasCoords.x - origin.x;
+  const dy = slot.canvasCoords.y - origin.y;
+  const travelDistance = Math.sqrt(dx * dx + dy * dy);
+  // Handling cost: heavier items cost more to lift; higher levels cost more
+  const levelPenalty = (slot.level ?? 1) * 5;
+  const weightHandling = item.weightLbs * 0.001;
+  return Math.round((travelDistance + levelPenalty + weightHandling) * 100) / 100;
+}
+
 function evaluatePalletPlacement(
   item: InboundPalletItem,
   allSlots: LocationSlot[],
@@ -119,11 +147,13 @@ function evaluatePalletPlacement(
       continue;
     }
     if (check.compatible) {
+      const cost = computePutawayCost(slot, item);
+      const costAdjustment = Math.max(-15, Math.min(0, -Math.round(cost / 10)));
       validCandidates.push({
         slot,
-        score: check.score,
+        score: check.score + costAdjustment,
         isAlternative: check.isAlternative,
-        reasons: check.reasons,
+        reasons: [...check.reasons, `Putaway cost ${cost}`],
       });
     } else {
       if (check.violation && !violationsCollected.includes(check.violation)) {
@@ -194,7 +224,18 @@ interface SuitabilityCheck {
   violation?: string;
 }
 
-export function checkSlotSuitability(item: Pick<InboundPalletItem, 'environmentalClass' | 'packageType' | 'weightLbs' | 'dimensions' | 'groundOnly'>, slot: LocationSlot): SuitabilityCheck {
+
+export function defaultTempRangeForClass(cls: string): { min: number; max: number } {
+  switch (cls) {
+    case 'frozen': return { min: -25, max: 5 };
+    case 'chilled': return { min: 33, max: 46 };
+    case 'hazmat': return { min: 50, max: 80 };
+    case 'ambient':
+    default: return { min: 50, max: 80 };
+  }
+}
+
+export function checkSlotSuitability(item: Pick<InboundPalletItem, 'environmentalClass' | 'packageType' | 'weightLbs' | 'dimensions' | 'groundOnly' | 'storageTempRangeF'>, slot: LocationSlot): SuitabilityCheck {
   const reasons: string[] = [];
 
   if (!Number.isFinite(item.weightLbs) || item.weightLbs <= 0 || !Object.values(item.dimensions).every(value => Number.isFinite(value) && value > 0) || typeof item.packageType !== 'string' || typeof item.groundOnly !== 'boolean') {
@@ -210,6 +251,23 @@ export function checkSlotSuitability(item: Pick<InboundPalletItem, 'environmenta
       reasons: [],
       violation: `Zone does not support ${item.environmentalClass.toUpperCase()} classification (requires certified storage)`,
     };
+  }
+
+  // 1a. Temperature range compatibility: the slot's maintained range must cover
+  // the commodity's required storage range. A 34F chilled room cannot hold frozen cargo.
+  if (slot.temperatureRangeF) {
+    const itemRange = item.storageTempRangeF ?? defaultTempRangeForClass(item.environmentalClass);
+    // Overlap check: the slot's maintained range and the commodity's required range
+    // must overlap. A 34F chilled room cannot hold frozen cargo (ranges disjoint).
+    if (!(itemRange.min <= slot.temperatureRangeF.max && itemRange.max >= slot.temperatureRangeF.min)) {
+      return {
+        compatible: false,
+        score: 0,
+        isAlternative: false,
+        reasons: [],
+        violation: `Commodity requires ${itemRange.min}–${itemRange.max}°F but slot maintains ${slot.temperatureRangeF.min}–${slot.temperatureRangeF.max}°F (temperature mismatch)`,
+      };
+    }
   }
 
   // 1b. Yard slot policy: Exterior yard slots require containerized equipment or trailers

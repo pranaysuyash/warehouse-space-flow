@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { computeFacilityMetrics } from '../engine/spatialModel';
 import {
   type CameraConfig,
   type PalletRackBay,
@@ -7,7 +8,14 @@ import {
   buildWarehouseBlueprintAnnotations,
 } from '../engine/warehouseIsometric';
 
-export const WarehouseIsometricCanvas: React.FC = () => {
+export interface WarehouseIsometricCanvasProps {
+  /** Facility to derive KPIs from. When omitted, falls back to canonical DC-04 metrics. */
+  facility?: import('../engine/types').Facility;
+  /** Pre-computed metrics. When omitted, computed from facility. */
+  metrics?: import('../engine/spatialModel').FacilityMetrics;
+}
+
+export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> = ({ facility, metrics: metricsProp }) => {
   const [camera, setCamera] = useState<CameraConfig>({
     azimuthDeg: 40,
     elevationDeg: 32,
@@ -29,6 +37,13 @@ export const WarehouseIsometricCanvas: React.FC = () => {
   const [velocityFilter, setVelocityFilter] = useState<'all' | 'A' | 'B' | 'C'>('all');
   const [selectedBay, setSelectedBay] = useState<PalletRackBay | null>(null);
   const [hoveredPart, setHoveredPart] = useState<string | null>(null);
+  const derivedMetrics = useMemo(() => {
+    if (metricsProp) return metricsProp;
+    if (facility) {
+      return computeFacilityMetrics(facility);
+    }
+    return null;
+  }, [facility, metricsProp]);
 
   // Drag Orbit Handling
   const svgRef = useRef<SVGSVGElement>(null);
@@ -398,15 +413,15 @@ export const WarehouseIsometricCanvas: React.FC = () => {
       <div className="wh-kpi-footer">
         <div className="kpi-card">
           <span className="kpi-k">Total Rack Capacity</span>
-          <span className="kpi-v text-cyan">48 Bays</span>
+          <span className="kpi-v text-cyan">{derivedMetrics ? `${derivedMetrics.totalSlots} Slots` : '48 Bays'}</span>
         </div>
         <div className="kpi-card">
           <span className="kpi-k">Slotting Occupancy</span>
-          <span className="kpi-v text-emerald">100% (48 / 48)</span>
+          <span className="kpi-v text-emerald">{derivedMetrics ? `${derivedMetrics.occupancyPercent}% (${derivedMetrics.occupiedSlots} / ${derivedMetrics.totalSlots})` : '100% (48 / 48)'}</span>
         </div>
         <div className="kpi-card">
           <span className="kpi-k">Total Stored Mass</span>
-          <span className="kpi-v">88,800 lbs</span>
+          <span className="kpi-v">{derivedMetrics ? `${derivedMetrics.totalWeightCapacityLbs.toLocaleString()} lbs` : '88,800 lbs'}</span>
         </div>
         <div className="kpi-card">
           <span className="kpi-k">Dock Doors / Staging</span>

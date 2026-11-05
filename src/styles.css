@@ -1238,3 +1238,13 @@ body {
     height: 320px;
   }
 }
+
+/* Mobile: stack fixed desktop grids */
+@media (max-width: 640px) {
+  .stepper-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .app-container {
+    padding: 12px;
+  }
+}

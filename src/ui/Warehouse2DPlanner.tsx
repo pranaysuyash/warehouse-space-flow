@@ -63,6 +63,7 @@ export const Warehouse2DPlanner: React.FC = () => {
         verifiedTimestamp: new Date(Date.now() - 3600000).toISOString(),
         notes: 'Inbound trailer DO-CHI-884910 docked and seal intact.',
       },
+      verificationStatus: 'simulated',
     },
   ]);
 
