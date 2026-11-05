@@ -2,119 +2,119 @@
 
 - Doctrine path: /Users/pranay/Projects/trucking/products/product-06-warehouse-space-flow/OPERATING_DOCTRINE.md
 - SHA-256: e14bab7b1964d8b755c9e6c7f5b1c2b44e1d726033fa23aeaee6ce921e271a75
-- Generated: 2026-11-05T13:16:38Z
+- Generated: 2026-11-05T18:07:34Z
 - This is a generated review artifact, not an instruction source.
 
 ## SECTION_0
 
 - Label: §0 Start from live truth
 - Reviewed: True
-- Evidence: Live-truth inspection of staged P06 diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): wired global modals in App to receive workspace/session snapshots (facility/manifest) derived from Warehouse2DPlanner state and shipment session; Warehouse2DPlanner now reports workspace changes via onWorkspaceChange. CycleCountModal seeds slot/occupant choices from real facility slots and compares manual/scanned actual occupant (snapshot-driven, not camera-integrated). AbcReslottingModal generates heuristic move suggestions from real slot codes/manifest hints and explicitly states it does not move inventory. GoodsLedgerModal prefills from manifest but is explicitly local to the modal session and not saved to workspace/server state. No fake authoritative occupancy/ledger persistence added. npm test -> 22 files, 117 tests passed (full suite green). npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully).
+- Evidence: Live-truth inspection of staged P06 product-repo diff: docs/reviews/motto_review.md, src/ui/Warehouse2DPlanner.tsx. Adds real standalone warehouse workspace workflow in Warehouse2DPlanner: import workspace JSON (facility+manifest+reconciliation), export JSON, download starter template, create starter warehouse via createCustomFacility, standalone badge, and honest empty state with session/import actions. No fake auto-seeded standalone data; demo/sample remains explicit evaluation action. Evidence tier 2: npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip). Canonical ownership preserved in src/ui/Warehouse2DPlanner.tsx.
 
 ## SECTION_00_INTEGRATED
 
 - Label: Full doctrine integrated audit
 - Reviewed: True
-- Evidence: Integrated: P06 Cycle Count/ABC/Goods Ledger modals wired to workspace/session snapshots with real slot/occupant/manifest hints and honest local/manual/non-persistent labeling; Warehouse2DPlanner reports workspace changes. Diff: docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx. Tests: npm test -> 22 files, 117 tests passed (full suite green). Build: npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully). Honest residuals: Goods Ledger modal-local only (not saved), ABC/Cycle Count do not mutate authoritative state, deep workspace persistence/action integration pending.
+- Evidence: Integrated acceptance (P06 standalone workspace slice): real standalone JSON import/export, starter warehouse, template download, and honest empty state/session behavior in src/ui/Warehouse2DPlanner.tsx; no fake auto-seeded operational truth. Staged paths: docs/reviews/motto_review.md, src/ui/Warehouse2DPlanner.tsx. Evidence: npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip). Honest residuals: JSON-only workflow, no visual facility editor, no manifest CSV/row-validation UX, no authoritative Goods Ledger persistence, hazmat/EPCIS deployment boundaries still pending.
 
 ## SECTION_1
 
 - Label: §1 Outcomes and retained value
 - Reviewed: True
-- Evidence: Goal for diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): reduce P06 modal demo/sample isolation by connecting modals to real workspace snapshots while preserving truthful boundaries (no fake live ledger, no automatic inventory moves, no unverified persistence). npm test -> 22 files, 117 tests passed (full suite green). npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully).
+- Evidence: Outcome: a proper standalone user can start from empty state, import/export a workspace JSON, or create a starter warehouse/template without fake seeded operational truth. Connected shipment session remains the cross-product path. Residuals stated honestly: JSON-based only; no visual facility editor, no manifest CSV/form/row validation UX, no authoritative Goods Ledger persistence, hazmat metadata linkage/EPCIS deployment wiring pending. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_10
 
 - Label: §10 Parallel work and contested state
 - Reviewed: True
-- Evidence: Performance in diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): lightweight memo/effect usage; workspace snapshot callback passes references/derived state only. npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully).
+- Evidence: Parallel work: inspected live product-repo state before staging; product repo has only intended tracked changes (docs/reviews/motto_review.md, src/ui/Warehouse2DPlanner.tsx). Root dual-tracking drift not staged by product-repo publish flow. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_11
 
 - Label: §11 Engineering and data integrity
 - Reviewed: True
-- Evidence: Security/data in diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): no external endpoints, secrets, or sensitive data flows added; local modal state only. docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx.
+- Evidence: Data integrity/security: no secrets or external endpoints added; JSON import affects local UI state only; malformed/non-object JSON rejected by parsing/shape checks. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_12
 
 - Label: §12 AI output boundary
 - Reviewed: True
-- Evidence: Observability in diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): UI copy clarifies snapshot/manual/local behavior and non-persistence for Goods Ledger. docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx.
+- Evidence: AI/output boundary: implementation is deterministic UI/data handling; no model-generated operational truth. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_13
 
 - Label: §13 Product, operator, and claim reality
 - Reviewed: True
-- Evidence: Blast radius limited to P06 modal/planner UI (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx). npm test -> 22 files, 117 tests passed (full suite green).
+- Evidence: Claims/boundaries: standalone workflow is real but JSON-based; no overclaim of visual editor, authoritative persistence, or live integrations. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_14
 
 - Label: §14 Documentation and decisions
 - Reviewed: True
-- Evidence: Documentation/decisions: residuals require explicit decisions (Goods Ledger state ownership/persistence, Cycle Count/ABC action integration, camera/scan capture). Audit doc may be updated separately. docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx.
+- Evidence: Documentation/evidence: commit message, spec, and motto attestation capture evidence and residuals. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_15
 
 - Label: §15 Completion contract
 - Reviewed: True
-- Evidence: Preservation in diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): existing modal functionality preserved; engines unchanged; additive props and clearer labels reduce demo ambiguity without faking live integration. npm test -> 22 files, 117 tests passed (full suite green).
+- Evidence: Rollback: localized UI changes in src/ui/Warehouse2DPlanner.tsx; revert commit restores prior planner behavior. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_16
 
 - Label: §16 Specialist doctrine routing
 - Reviewed: True
-- Evidence: Migration/compat for diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): additive optional props/callback; no persisted schema changes. npm test -> 22 files, 117 tests passed (full suite green).
+- Evidence: Operations: no new services/config required; works in existing P06 dev/build flow. npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_17
 
 - Label: §17 Propagation contract
 - Reviewed: True
-- Evidence: Readiness for diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): tests/build green. Honest residuals: Goods Ledger entries are modal-local and NOT saved to workspace/server; Cycle Count/ABC use snapshot/heuristics and do not mutate authoritative inventory/facility state; camera scan, persistent ledger ownership, and end-to-end workspace actions remain pending. npm test -> 22 files, 117 tests passed (full suite green). npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully).
+- Evidence: Follow-up: manifest CSV/form + row validation, visual facility editor, Goods Ledger authoritative ownership, hazmat metadata linkage, EPCIS deployment wiring with explicit boundaries. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_2
 
 - Label: §2 Truth taxonomy
 - Reviewed: True
-- Evidence: Canonical ownership in diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): reuses existing engine helpers (getAllSlots, cycleCount/abcReslotting/goodsLedger engines) and existing workspace state in Warehouse2DPlanner/App; no parallel state store introduced.
+- Evidence: User value: removes demo-only dead-end for standalone P06; supports real local workspace iteration with explicit, user-chosen data paths. UI paths: src/ui/Warehouse2DPlanner.tsx. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_3
 
 - Label: §3 Proportional rigor and evidence
 - Reviewed: True
-- Evidence: Scope bounded to P06 diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): UI modal props/state wiring and planner workspace callback only.
+- Evidence: Canonical ownership preserved: planner/UI behavior in src/ui/Warehouse2DPlanner.tsx; no duplicate engine/store added. Uses existing createCustomFacility/spatial model contracts. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_4
 
 - Label: §4 Authorization and side effects
 - Reviewed: True
-- Evidence: Safety/correctness in diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): additive optional props; null-safe snapshot handling; Goods Ledger explicitly labeled not saved to workspace/server; ABC/Cycle Count do not mutate facility/inventory state. npm test -> 22 files, 117 tests passed (full suite green). npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully).
+- Evidence: Safety/truthfulness: imported workspace is validated as an object and applied to local planner state; no external publication claims; no fake persistence; empty state is honest. Residual risks documented. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_5
 
 - Label: §5 Canonical paths and ownership
 - Reviewed: True
-- Evidence: Architecture in diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): snapshot callback from planner to App provides a narrow integration seam; modals remain presentational/engine-driven without introducing server contracts. Further deep integration requires explicit state ownership decisions.
+- Evidence: Contracts/state: workspace snapshot derived/applied locally (facility/manifest/reconciliation/null). Export/download/import are explicit user actions. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_6
 
 - Label: §6 Semantic salvage and supersession
 - Reviewed: True
-- Evidence: Testing for diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): full suite green (npm test -> 22 files, 117 tests passed (full suite green)); build/typecheck green (npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully)). No new unit tests added in this slice; behavior is UI wiring/labeling and should get targeted UI/engine integration tests in follow-up slices.
+- Evidence: Verification: full product regression suite and production build executed in current state. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_7
 
 - Label: §7 Capability routing
 - Reviewed: True
-- Evidence: Build/type for diff (docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx): npm run build exit 0 (tsc --noEmit && vite build; Vite built successfully). Type issue in GoodsLedgerModal prefill fixed (manifest item shape).
+- Evidence: Accessibility/UX: explicit actions, labels, and empty-state guidance added; no simulated/hidden automation. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_8
 
 - Label: §8 Skills lifecycle
 - Reviewed: True
-- Evidence: Skills/lifecycle: followed project AGENTS/doctrine and P06 patterns; no external skill install. docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx.
+- Evidence: Performance: lightweight JSON parse/stringify and local state updates only; no new hot-path network dependencies. npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
 
 ## SECTION_9
 
 - Label: §9 Exploration and durable knowledge
 - Reviewed: True
-- Evidence: Exploration/durable knowledge: addresses audit gap (modal wiring shallow/sample-driven) partially and truthfully; residual deep wiring/persistence decisions remain documented. docs/reviews/motto_review.md, src/ui/AbcReslottingModal.tsx, src/ui/App.tsx, src/ui/CycleCountModal.tsx, src/ui/GoodsLedgerModal.tsx, src/ui/Warehouse2DPlanner.tsx.
+- Evidence: Maintainability: changes localized to planner UI (src/ui/Warehouse2DPlanner.tsx) and review artifact; reuses existing engine helpers. npm test -> 22 files, 117 tests passed (1.19s); npm run build -> exit 0 (tsc --noEmit && vite build; Vite built in 567ms; dist/assets/index-CpBx-L5R.js 423.61 kB / 125.81 kB gzip).
