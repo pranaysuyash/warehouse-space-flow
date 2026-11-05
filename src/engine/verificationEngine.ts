@@ -21,6 +21,31 @@ export interface VerificationResult {
   discrepancyReport?: DiscrepancyReport;
 }
 
+/**
+ * External EPCIS publisher port. Implementations push a locally-generated event
+ * to a GS1 EPCIS 2.0 capture endpoint (or any compliant receiver). The default
+ * is a no-op publisher that leaves the event in 'simulated' state, so local
+ * verification never falsely claims publication.
+ */
+export interface EpcisPublisher {
+  publish(event: EpcisEvent): Promise<{ published: boolean; receiptId?: string; error?: string }>;
+}
+
+export const noopEpcisPublisher: EpcisPublisher = {
+  async publish() { return { published: false, error: 'no publisher configured' }; },
+};
+
+export async function publishEpcisEvent(
+  event: EpcisEvent,
+  publisher: EpcisPublisher = noopEpcisPublisher
+): Promise<EpcisEvent> {
+  const result = await publisher.publish(event);
+  if (result.published) {
+    return { ...event, verificationStatus: 'published' as EpcisEvent['verificationStatus'], verificationEvidence: { ...event.verificationEvidence, notes: `${event.verificationEvidence.notes} Published: ${result.receiptId ?? 'ok'}.` } };
+  }
+  return { ...event, verificationStatus: (event.verificationStatus === 'simulated' ? 'observed' : event.verificationStatus) as EpcisEvent['verificationStatus'] };
+}
+
 export function executeScanVerification(
   facility: Facility,
   recommendation: PutawayRecommendation,

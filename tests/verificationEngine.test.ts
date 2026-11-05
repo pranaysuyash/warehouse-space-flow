@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createCanonicalFacility } from '../src/engine/spatialModel';
 import { createCanonical40PalletManifest } from '../src/engine/inboundManifest';
 import { solvePutawayManifest } from '../src/engine/putawayEngine';
-import { executeScanVerification } from '../src/engine/verificationEngine';
+import { executeScanVerification, publishEpcisEvent, noopEpcisPublisher } from '../src/engine/verificationEngine';
 
 describe('P06 Scan Verification & GS1 EPCIS 2.0 Audits', () => {
   it('confirms putaway and generates compliant EPCIS ObjectEvent when barcode matches assigned bin', () => {
@@ -60,5 +60,33 @@ describe('P06 Scan Verification & GS1 EPCIS 2.0 Audits', () => {
     expect(result.discrepancyReport!.expectedLocationId).toBe(firstProposed!.targetLocationCode);
     expect(result.discrepancyReport!.actualLocationId).toBe('WRONG-BIN-999');
     expect(result.discrepancyReport!.discrepancyType).toBe('MISPLACED_LOCATION');
+  });
+});
+
+describe('P06 EPCIS publisher port', () => {
+  const baseEvent = {
+    eventId: 'urn:uuid:test-evt',
+    eventType: 'ObjectEvent' as const,
+    eventTime: new Date().toISOString(),
+    action: 'OBSERVE' as const,
+    bizStep: 'putting_away',
+    disposition: 'active',
+    epcList: ['urn:epc:id:sscc:0614141.123'],
+    readPoint: 'urn:epc:id:sgln:0614141.00001.A1',
+    bizLocation: 'urn:epc:id:sgln:0614141.00001.SLOT-A1',
+    verificationEvidence: { scanType: 'BARCODE_2D_DATAMATRIX' as const, operatorId: 'OPR-1', verifiedTimestamp: new Date().toISOString(), notes: 'verified' },
+    verificationStatus: 'simulated' as const,
+  };
+
+  it('no-op publisher leaves event simulated/observed (never falsely published)', async () => {
+    const out = await publishEpcisEvent(baseEvent, noopEpcisPublisher);
+    expect(out.verificationStatus).not.toBe('published');
+  });
+
+  it('successful publisher transitions to published', async () => {
+    const pub = { async publish() { return { published: true, receiptId: 'RCPT-1' }; } };
+    const out = await publishEpcisEvent(baseEvent, pub);
+    expect(out.verificationStatus).toBe('published');
+    expect(out.verificationEvidence.notes).toContain('Published: RCPT-1');
   });
 });
