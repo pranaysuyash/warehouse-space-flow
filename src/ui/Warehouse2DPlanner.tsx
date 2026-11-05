@@ -31,12 +31,10 @@ import {
 
 export const Warehouse2DPlanner: React.FC = () => {
   const session = useShipmentSession();
-  const [facility, setFacility] = useState<Facility>(() => createCanonicalFacility());
-  const [manifest, setManifest] = useState<InboundManifest>(() => createCanonical40PalletManifest());
-  const [entities] = useState<MoveableEntity[]>(() => createSeedMoveableEntities());
-  const [solverResult, setSolverResult] = useState<PutawaySolveSummary | null>(() =>
-    solvePutawayManifest(createCanonicalFacility(), createCanonical40PalletManifest())
-  );
+  const [facility, setFacility] = useState<Facility | null>(null);
+  const [manifest, setManifest] = useState<InboundManifest | null>(null);
+  const [entities, setEntities] = useState<MoveableEntity[]>([]);
+  const [solverResult, setSolverResult] = useState<PutawaySolveSummary | null>(null);
 
   const [selectedPalletId, setSelectedPalletId] = useState<string | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
@@ -45,43 +43,25 @@ export const Warehouse2DPlanner: React.FC = () => {
   const [rightPanelTab, setRightPanelTab] = useState<'queue' | 'epcis' | 'yard'>('queue');
   const [hoveredSlot, setHoveredSlot] = useState<LocationSlot | null>(null);
 
-  // EPCIS audit stream
-  const [epcisEvents, setEpcisEvents] = useState<EpcisEvent[]>(session?.selectedId ? [] : [
-    {
-      eventId: 'urn:uuid:evt-seed-receiving-01',
-      eventType: 'ObjectEvent',
-      eventTime: new Date(Date.now() - 3600000).toISOString(),
-      action: 'OBSERVE',
-      bizStep: 'urn:epcglobal:cbv:bizstep:receiving',
-      disposition: 'urn:epcglobal:cbv:disp:in_progress',
-      epcList: ['urn:epc:id:sscc:0614141.000109283740000001'],
-      readPoint: 'urn:epc:id:sgln:0614141.00001.DOCK-02',
-      bizLocation: 'urn:epc:id:sgln:0614141.00001.ZD-REC',
-      verificationEvidence: {
-        scanType: 'BARCODE_2D_DATAMATRIX',
-        operatorId: 'OPR-RECEIVING-D02',
-        verifiedTimestamp: new Date(Date.now() - 3600000).toISOString(),
-        notes: 'Inbound trailer DO-CHI-884910 docked and seal intact.',
-      },
-      verificationStatus: 'simulated',
-    },
-  ]);
+  // EPCIS audit stream — empty until a demo workspace is loaded or events are observed.
+  const [epcisEvents, setEpcisEvents] = useState<EpcisEvent[]>([]);
 
   const [discrepancies, setDiscrepancies] = useState<DiscrepancyReport[]>([]);
   const [notification, setNotification] = useState<{ type: 'success' | 'warn'; message: string } | null>(null);
-  function importShared(shipment: Shipment) {
+  function importShared(shipment: Shipment): { facility: Facility; manifest: InboundManifest; solverResult: PutawaySolveSummary | null } {
     const incoming = inboundForShipment(shipment);
     const nextFacility = facilityForShipment(shipment, session?.resources ?? null);
     const saved = shipment.results.warehouse;
     const records = saved?.inputRevision === shipment.inputRevision ? saved.details.recommendations as PutawaySolveSummary['recommendations'] | undefined : undefined;
     return { facility: nextFacility, manifest: incoming, solverResult: records ? { totalExpected: incoming.items.length, proposedCount: records.filter(item => item.status === 'proposed').length, alternativeCount: records.filter(item => item.status === 'alternative').length, conflictCount: records.filter(item => item.status === 'conflict').length, recommendations: records, computedAt: saved!.recordedAt } : solvePutawayManifest(planningFacility(nextFacility, shipment, session?.resources ?? null), incoming) };
   }
-  const draft = useShipmentDraft<{ facility: Facility; manifest: InboundManifest; solverResult: PutawaySolveSummary | null }>({
-    value: { facility, manifest, solverResult }, importValue: importShared,
-    applyValue: value => { setFacility(value.facility); setManifest(value.manifest); setSolverResult(value.solverResult); setSelectedPalletId(value.manifest.items[0]?.palletId ?? null); setSelectedSlotId(null); setEpcisEvents([]); setDiscrepancies([]); },
+  const draft = useShipmentDraft<{ facility: Facility | null; manifest: InboundManifest | null; solverResult: PutawaySolveSummary | null }>({
+    value: { facility, manifest, solverResult },
+    importValue: (s) => importShared(s),
+    applyValue: value => { setFacility(value.facility); setManifest(value.manifest); setSolverResult(value.solverResult); setSelectedPalletId(value.manifest?.items[0]?.palletId ?? null); setSelectedSlotId(null); setEpcisEvents([]); setDiscrepancies([]); },
   });
   const publication = useMemo(() => {
-    if (!session?.shipment || !solverResult) return { result: null, error: '' };
+    if (!session?.shipment || !solverResult || !facility || !manifest) return { result: null, error: '' };
     try { return { result: resultForReceivingPlan(session.shipment, facility, manifest, solverResult, session.resources), error: '' }; }
     catch (error) { return { result: null, error: error instanceof Error ? error.message : 'Receiving plan could not be reviewed.' }; }
   }, [session?.shipment, session?.resources, facility, manifest, solverResult]);
@@ -93,7 +73,7 @@ export const Warehouse2DPlanner: React.FC = () => {
     return facility;
   }, [session?.shipment, session?.resources, session?.selectedId, draft.dirty, draft.incoming, facility]);
   // Facility Metrics
-  const metrics = useMemo(() => computeFacilityMetrics(displayedFacility), [displayedFacility]);
+  const metrics = useMemo(() => displayedFacility ? computeFacilityMetrics(displayedFacility) : null, [displayedFacility]);
 
   // Filtered Recommendations
   const filteredRecommendations = useMemo(() => {
@@ -120,6 +100,7 @@ export const Warehouse2DPlanner: React.FC = () => {
   }, [solverResult, selectedPalletId]);
 
   const activeSlot = useMemo(() => {
+    if (!displayedFacility) return null;
     if (selectedSlotId) return findSlotById(displayedFacility, selectedSlotId);
     if (selectedRecommendation?.targetSlotId) {
       return findSlotById(displayedFacility, selectedRecommendation.targetSlotId);
@@ -129,6 +110,7 @@ export const Warehouse2DPlanner: React.FC = () => {
 
   // Run Solver Action
   const handleRunSolver = () => {
+    if (!facility || !manifest) return;
     const nextFacility = session?.shipment && session.selectedId ? planningFacility(facility, session.shipment, session.resources) : facility;
     const res = solvePutawayManifest(nextFacility, manifest);
     setFacility(nextFacility);
@@ -141,7 +123,7 @@ export const Warehouse2DPlanner: React.FC = () => {
 
   // Commit Reservations
   const handleCommitReservations = () => {
-    if (!solverResult) return;
+    if (!solverResult || !facility) return;
     const newFacility = JSON.parse(JSON.stringify(facility)) as Facility;
     let committed = 0;
 
@@ -166,6 +148,7 @@ export const Warehouse2DPlanner: React.FC = () => {
 
   // Scan & Putaway Verification
   const handleVerifyPutaway = async (rec: PutawayRecommendation, simulateError = false) => {
+    if (!facility) return;
     const targetCode = simulateError ? 'WRONG-SLOT-99' : rec.targetLocationCode;
     const newFacility = JSON.parse(JSON.stringify(facility)) as Facility;
 
@@ -186,91 +169,111 @@ export const Warehouse2DPlanner: React.FC = () => {
     }
   };
 
-  // Import Load from P01 Cargo Fit Bridge
-  const handleImportCargoFit = () => {
-    const mockCargoFitLoad: CargoFitVehicleLoad = {
-      loadId: 'CF-LOAD-ORD-992',
-      vehicleType: '53ft Semi-Trailer (Dry Van)',
-      carrier: 'J.B. Hunt Dedicated',
-      trailerNumber: 'JB-53-8821',
-      destinationFacilityId: 'FACILITY-DC-04',
-      totalWeightLbs: 38200,
-      packedItems: [
-        {
-          itemId: 'BEARING-SKID-01',
-          description: 'High-Precision Tapered Roller Bearings',
-          lengthIn: 48,
-          widthIn: 40,
-          heightIn: 52,
-          weightLbs: 1950,
-          temperatureClass: 'ambient',
+  const handleLoadDemoWorkspace = () => {
+    const demoFacility = createCanonicalFacility();
+    const demoManifest = createCanonical40PalletManifest();
+    const demoEntities = createSeedMoveableEntities();
+    const demoResult = solvePutawayManifest(demoFacility, demoManifest);
+    setFacility(demoFacility);
+    setManifest(demoManifest);
+    setEntities(demoEntities);
+    setSolverResult(demoResult);
+    setSelectedPalletId(demoManifest.items[0]?.palletId ?? null);
+    setSelectedSlotId(null);
+    setDiscrepancies([]);
+    setEpcisEvents([
+      {
+        eventId: 'urn:uuid:demo-receiving-seed',
+        eventType: 'ObjectEvent',
+        eventTime: new Date().toISOString(),
+        action: 'OBSERVE',
+        bizStep: 'urn:epcglobal:cbv:bizstep:receiving',
+        disposition: 'urn:epcglobal:cbv:disp:in_progress',
+        epcList: ['urn:epc:id:sscc:demo.000000000001'],
+        readPoint: 'urn:epc:id:sgln:demo.DOCK-01',
+        bizLocation: 'urn:epc:id:sgln:demo.ZD-REC',
+        verificationEvidence: {
+          scanType: 'MANUAL_DISPATCH',
+          operatorId: 'DEMO-OPERATOR',
+          verifiedTimestamp: new Date().toISOString(),
+          notes: 'Demo workspace seed — not a physical scan, not published to an external EPCIS repository.',
         },
-        {
-          itemId: 'PHARMA-VACCINE-02',
-          description: 'Temperature-Sensitive Biological Totes',
-          lengthIn: 48,
-          widthIn: 40,
-          heightIn: 56,
-          weightLbs: 1250,
-          temperatureClass: 'chilled',
-        },
-        {
-          itemId: 'CHEMICAL-SOLVENT-03',
-          description: '4x 55-Gal Steel Drums (Class 3 Solvent)',
-          lengthIn: 48,
-          widthIn: 48,
-          heightIn: 55,
-          weightLbs: 2350,
-          isHazmat: true,
-        },
-        {
-          itemId: 'HYDRAULIC-VALVE-04',
-          description: 'Solid Bronze Hydraulic Valve Castings',
-          lengthIn: 52,
-          widthIn: 46,
-          heightIn: 48,
-          weightLbs: 3300,
-          groundOnly: true,
-        },
-      ],
-    };
-
-    const newManifest = translateCargoFitLoadToInboundManifest(mockCargoFitLoad, 'DOCK-03', 'STG-C');
-    setManifest(newManifest);
-    const newSolution = solvePutawayManifest(facility, newManifest);
-    setSolverResult(newSolution);
-    setSelectedPalletId(newManifest.items[0]?.palletId || null);
-    setNotification({
-      type: 'success',
-      message: ' Loaded four built-in demonstration items. Use the connected shipment workspace for real cross-product record intake.',
-    });
+        verificationStatus: 'simulated',
+      },
+    ]);
+    setNotification({ type: 'success', message: 'Loaded demo workspace (canonical facility + sample manifest). Data is local/demo unless connected to a shipment session.' });
   };
 
+  // Load a sample Cargo Fit import (standalone demo only — not a real P01 connection)
+  const handleLoadSampleImport = () => {
+    const baseFacility = facility ?? createCanonicalFacility();
+    const mockCargoFitLoad: CargoFitVehicleLoad = {
+      loadId: 'CF-LOAD-SAMPLE',
+      vehicleType: '53ft Semi-Trailer (Dry Van)',
+      carrier: 'Sample Carrier',
+      trailerNumber: 'SAMPLE-53',
+      destinationFacilityId: baseFacility.id,
+      totalWeightLbs: 8850,
+      packedItems: [
+        { itemId: 'BEARING-SKID-01', description: 'High-Precision Tapered Roller Bearings', lengthIn: 48, widthIn: 40, heightIn: 52, weightLbs: 1950, temperatureClass: 'ambient' },
+        { itemId: 'PHARMA-VACCINE-02', description: 'Temperature-Sensitive Biological Totes', lengthIn: 48, widthIn: 40, heightIn: 56, weightLbs: 1250, temperatureClass: 'chilled' },
+        { itemId: 'CHEMICAL-SOLVENT-03', description: '4x 55-Gal Steel Drums (Class 3 Solvent)', lengthIn: 48, widthIn: 48, heightIn: 55, weightLbs: 2350, isHazmat: true },
+        { itemId: 'HYDRAULIC-VALVE-04', description: 'Solid Bronze Hydraulic Valve Castings', lengthIn: 52, widthIn: 46, heightIn: 48, weightLbs: 3300, groundOnly: true },
+      ],
+    };
+    const newManifest = translateCargoFitLoadToInboundManifest(mockCargoFitLoad, 'DOCK-03', 'STG-C');
+    if (!facility) {
+      setFacility(baseFacility);
+      setEntities(createSeedMoveableEntities());
+    }
+    setManifest(newManifest);
+    const newSolution = solvePutawayManifest(baseFacility, newManifest);
+    setSolverResult(newSolution);
+    setSelectedPalletId(newManifest.items[0]?.palletId || null);
+    setEpcisEvents([]);
+    setDiscrepancies([]);
+    setNotification({ type: 'success', message: 'Loaded sample Cargo Fit import (demo). Use the connected shipment workspace for real cross-product record intake.' });
+  };
+
+  const hasWorkspace = Boolean(displayedFacility && manifest);
   return (
     <div className="planner-container">
-      {session?.selectedId && <section className="execution-task" aria-labelledby="receiving-plan-title">
+      {session?.selectedId && displayedFacility && manifest && <section className="execution-task" aria-labelledby="receiving-plan-title">
         <div className="execution-task-heading"><div><span className="execution-eyebrow">DESTINATION RECEIVING · DECLARED LOCAL FACILITY</span><h2 id="receiving-plan-title">Review receiving space</h2></div><button onClick={() => session.inspect('stage:warehouse')}>Inspect saved receiving plan</button></div>
-        <p>{session.shipment?.reference ?? 'Loading selected shipment'} · {manifest.items.length} identified handling units · {facility.name}</p>
+        <p>{session.shipment?.reference ?? 'Loading selected shipment'} · {manifest.items.length} identified handling units · {displayedFacility.name}</p>
         <p className="execution-task-note">The native solver uses the declared facility, exact shipment manifest and current shared reservations. Unknown occupied rack mass consumes its full position rating. This is capacity planning for a local scenario.</p>
         {draft.incoming && <p role="status">Shared planning changed. Your reviewed plan is retained. <button onClick={draft.loadCurrent}>Load current shipment</button></p>}
         {(publication.error || draft.error) && <p role="status">{publication.error || draft.error}</p>}
         {session.shipment && session.shipment.status !== 'draft' && <p>Planning is locked after dispatch. Accepted locations and receipt evidence remain inspectable.</p>}
-        <div className="execution-actions"><button disabled={!draft.canPublish || !publication.result} onClick={async () => { if (!publication.result || !draft.basis) return; const next = await session.submit('evaluate', { stage: 'warehouse', result: publication.result }, draft.basis.revision); if (next) { draft.acknowledge(next, { facility, manifest, solverResult }); setNotification({ type: 'success', message: 'Reviewed receiving plan saved with original unit identities and locations.' }); } }}>Publish reviewed receiving plan</button><a href={session.productUrl('product-07-yard-dock')}>Review dock allocation</a><button onClick={() => session.inspect('shipment')}>Inspect shipment and units</button></div>
+        <div className="execution-actions"><button disabled={!draft.canPublish || !publication.result} onClick={async () => { if (!publication.result || !draft.basis) return; const next = await session.submit('evaluate', { stage: 'warehouse', result: publication.result }, draft.basis.revision); if (next) { draft.acknowledge(next, { facility: displayedFacility, manifest, solverResult }); setNotification({ type: 'success', message: 'Reviewed receiving plan saved with original unit identities and locations.' }); } }}>Publish reviewed receiving plan</button><a href={session.productUrl('product-07-yard-dock')}>Review dock allocation</a><button onClick={() => session.inspect('shipment')}>Inspect shipment and units</button></div>
       </section>}
       {draft.detached && <p className="execution-task-note">Detached receiving draft retained. Native edits affect this independent workbench.</p>}
       <ReceivingTask />
+
+      {!hasWorkspace && !session?.selectedId && (
+        <section className="execution-task" aria-labelledby="warehouse-empty-title">
+          <div className="execution-task-heading"><div><span className="execution-eyebrow">STANDALONE MODE · NO DEMO DATA SEEDED</span><h2 id="warehouse-empty-title">Load a workspace to begin</h2></div></div>
+          <p className="execution-task-note">This planner does not auto-create a facility, manifest, or EPCIS events. Load an explicit demo workspace for evaluation, or open the app from a connected shipment session for real cross-product planning.</p>
+          <div className="execution-actions">
+            <button onClick={handleLoadDemoWorkspace}>Load demo workspace</button>
+            <button className="bridge-button" onClick={handleLoadSampleImport}>Load sample import (demo)</button>
+          </div>
+        </section>
+      )}
+
       {/* Platform & Bridge Status Bar */}
+      {hasWorkspace && displayedFacility && manifest && metrics && (
       <div className="status-strip">
         <div className="strip-group">
           <span className="strip-label">FACILITY:</span>
-          <span className="strip-value">{facility.name} ({facility.code})</span>
+          <span className="strip-value">{displayedFacility.name} ({displayedFacility.code})</span>
           <span className="strip-badge-live">{session?.selectedId ? 'DECLARED SCENARIO FACILITY' : 'INDEPENDENT FACILITY SIMULATOR'}</span>
         </div>
 
         <div className="strip-group">
           <span className="strip-label">CROSS-PRODUCT BRIDGE:</span>
-          <button className="bridge-button" disabled={Boolean(session?.selectedId)} onClick={handleImportCargoFit} title="Load a demonstration manifest in standalone mode">
-             Import from P01 Cargo Fit (OLLP-v1)
+          <button className="bridge-button" disabled={Boolean(session?.selectedId)} onClick={handleLoadSampleImport} title="Load a sample import manifest in standalone mode (demo)">
+             Load sample import (demo)
           </button>
         </div>
 
@@ -293,6 +296,7 @@ export const Warehouse2DPlanner: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {notification && (
         <div className={`notification-bar ${notification.type}`}>
@@ -302,6 +306,7 @@ export const Warehouse2DPlanner: React.FC = () => {
       )}
 
       {/* Main 3-Column Operational Layout */}
+      {hasWorkspace && displayedFacility && manifest && (
       <div className="operational-grid">
         {/* Left Column: Inbound Manifest & Multi-Constraint Solver */}
         <div className="col-panel manifest-panel">
@@ -688,6 +693,7 @@ export const Warehouse2DPlanner: React.FC = () => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };

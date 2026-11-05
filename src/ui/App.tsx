@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { SuiteDock } from './SuiteDock';
 import { Warehouse2DPlanner } from './Warehouse2DPlanner';
 import { WarehouseIsometricCanvas } from './WarehouseIsometricCanvas';
-import { createCanonicalFacility } from '../engine/spatialModel';
+import { useShipmentSession } from '../suite/ShipmentSession';
+import { facilityForShipment } from '../engine/shipmentAdapter';
 import { WavePickingModal } from './WavePickingModal';
 import { CrossDockModal } from './CrossDockModal';
 import { CycleCountModal } from './CycleCountModal';
@@ -10,12 +11,17 @@ import { AbcReslottingModal } from './AbcReslottingModal';
 import { GoodsLedgerModal } from './GoodsLedgerModal';
 
 export function App() {
+  const session = useShipmentSession();
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [isWaveModalOpen, setIsWaveModalOpen] = useState<boolean>(false);
   const [isCrossDockModalOpen, setIsCrossDockModalOpen] = useState<boolean>(false);
   const [isCycleCountModalOpen, setIsCycleCountModalOpen] = useState<boolean>(false);
   const [isAbcModalOpen, setIsAbcModalOpen] = useState<boolean>(false);
   const [isGoodsLedgerModalOpen, setIsGoodsLedgerModalOpen] = useState<boolean>(false);
+
+  const sessionFacility = session?.selectedId && session.shipment
+    ? facilityForShipment(session.shipment, session.resources)
+    : null;
 
   return (
     <div className="subproduct-root warehouse-app-container">
@@ -86,7 +92,16 @@ export function App() {
 
         {/* Dynamic Operational Content */}
         <div hidden={viewMode !== '2d'}><Warehouse2DPlanner /></div>
-        {viewMode === '3d' && <><p className="execution-task-note">Independent facility geometry study. This demonstration does not change shipment reservations or establish physical occupancy.</p><WarehouseIsometricCanvas facility={createCanonicalFacility()} /></>}
+        {viewMode === '3d' && (
+          sessionFacility ? (
+            <><p className="execution-task-note">Facility geometry study for the selected shipment scenario. This view does not change shipment reservations or establish physical occupancy.</p><WarehouseIsometricCanvas facility={sessionFacility} /></>
+          ) : (
+            <div className="execution-task-note" style={{ padding: 24 }}>
+              <h3 style={{ marginTop: 0 }}>3D Digital Twin</h3>
+              <p>Load a demo workspace or connect a shipment session in the 2D planner to view facility geometry. No demo facility is auto-seeded in standalone mode.</p>
+            </div>
+          )
+        )}
       </main>
 
       <WavePickingModal
