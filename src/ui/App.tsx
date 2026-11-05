@@ -5,11 +5,17 @@ import { WarehouseIsometricCanvas } from './WarehouseIsometricCanvas';
 import { createCanonicalFacility } from '../engine/spatialModel';
 import { WavePickingModal } from './WavePickingModal';
 import { CrossDockModal } from './CrossDockModal';
+import { CycleCountModal } from './CycleCountModal';
+import { AbcReslottingModal } from './AbcReslottingModal';
+import { GoodsLedgerModal } from './GoodsLedgerModal';
 
 export function App() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [isWaveModalOpen, setIsWaveModalOpen] = useState<boolean>(false);
   const [isCrossDockModalOpen, setIsCrossDockModalOpen] = useState<boolean>(false);
+  const [isCycleCountModalOpen, setIsCycleCountModalOpen] = useState<boolean>(false);
+  const [isAbcModalOpen, setIsAbcModalOpen] = useState<boolean>(false);
+  const [isGoodsLedgerModalOpen, setIsGoodsLedgerModalOpen] = useState<boolean>(false);
 
   return (
     <div className="subproduct-root warehouse-app-container">
@@ -72,6 +78,9 @@ export function App() {
             >
               Cross-Dock Allocation 🔄
             </button>
+            <button className="toggle-btn" onClick={() => setIsCycleCountModalOpen(true)} style={{ background:'#7c3aed', color:'#fff', border:'none', fontWeight:600 }}>Cycle Count</button>
+            <button className="toggle-btn" onClick={() => setIsAbcModalOpen(true)} style={{ background:'#d97706', color:'#fff', border:'none', fontWeight:600 }}>ABC Re-Slotting</button>
+            <button className="toggle-btn" onClick={() => setIsGoodsLedgerModalOpen(true)} style={{ background:'#0f766e', color:'#fff', border:'none', fontWeight:600 }}>Goods Ledger</button>
           </div>
         </header>
 
@@ -88,6 +97,21 @@ export function App() {
       <CrossDockModal
         isOpen={isCrossDockModalOpen}
         onClose={() => setIsCrossDockModalOpen(false)}
+      />
+
+      <CycleCountModal
+        isOpen={isCycleCountModalOpen}
+        onClose={() => setIsCycleCountModalOpen(false)}
+      />
+
+      <AbcReslottingModal
+        isOpen={isAbcModalOpen}
+        onClose={() => setIsAbcModalOpen(false)}
+      />
+
+      <GoodsLedgerModal
+        isOpen={isGoodsLedgerModalOpen}
+        onClose={() => setIsGoodsLedgerModalOpen(false)}
       />
     </div>
   );
