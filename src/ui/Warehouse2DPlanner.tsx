@@ -11,6 +11,7 @@ import {
 } from '../engine/types';
 import {
   createCanonicalFacility,
+  createCustomFacility,
   createSeedMoveableEntities,
   computeFacilityMetrics,
   findSlotById,
@@ -50,6 +51,139 @@ export const Warehouse2DPlanner: React.FC<{ onWorkspaceChange?: (s: { facility: 
 
   const [discrepancies, setDiscrepancies] = useState<DiscrepancyReport[]>([]);
   const [notification, setNotification] = useState<{ type: 'success' | 'warn'; message: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function validateImportedFacility(raw: unknown): Facility {
+    if (!raw || typeof raw !== 'object') throw new Error('Workspace JSON must include a "facility" object.');
+    const f = raw as Record<string, unknown>;
+    const input = {
+      id: String(f.id ?? ''),
+      code: String(f.code ?? ''),
+      name: String(f.name ?? ''),
+      address: String(f.address ?? ''),
+      totalSquareFeet: Number(f.totalSquareFeet),
+      clearHeightFt: Number(f.clearHeightFt),
+      zones: Array.isArray(f.zones) ? (f.zones as Facility['zones']) : [],
+    };
+    // createCustomFacility validates shape basics; full slot-level validation is best-effort.
+    return createCustomFacility(input);
+  }
+
+  function validateImportedManifest(raw: unknown): InboundManifest {
+    if (!raw || typeof raw !== 'object') throw new Error('Manifest must be an object.');
+    const m = raw as Record<string, unknown>;
+    if (!Array.isArray(m.items)) throw new Error('Manifest must include an "items" array.');
+    return {
+      manifestId: String(m.manifestId ?? `IMP-${Date.now()}`),
+      deliveryOrderNumber: String(m.deliveryOrderNumber ?? ''),
+      carrierName: String(m.carrierName ?? ''),
+      vehiclePlate: String(m.vehiclePlate ?? ''),
+      eta: String(m.eta ?? new Date().toISOString()),
+      originTruckLoadId: typeof m.originTruckLoadId === 'string' ? m.originTruckLoadId : undefined,
+      dockAssigned: String(m.dockAssigned ?? ''),
+      stagingLaneAssigned: String(m.stagingLaneAssigned ?? ''),
+      items: m.items as InboundManifest['items'],
+    };
+  }
+
+  function createStarterFacility(): Facility {
+    return createCustomFacility({
+      id: `FAC-${Date.now()}`,
+      code: 'STARTER-01',
+      name: 'My Warehouse',
+      address: '',
+      totalSquareFeet: 10000,
+      clearHeightFt: 24,
+      zones: [
+        {
+          id: 'ZONE-DOCK', code: 'DOCK', name: 'Receiving Dock', type: 'receiving_dock',
+          canvasBounds: { x: 20, y: 15, width: 200, height: 80 }, color: '#0284c7',
+          slots: [{ id: 'DOCK-01', code: 'D-01', zoneId: 'ZONE-DOCK', type: 'dock_door', canvasCoords: { x: 30, y: 30, width: 75, height: 50 }, dimensions: { lengthIn: 636, widthIn: 102, heightIn: 162 }, maxWeightLbs: 80000, allowedClasses: ['ambient', 'chilled', 'frozen', 'hazmat'], groundOnlyAllowed: true, status: 'available' }],
+        },
+        {
+          id: 'ZONE-STAGING', code: 'STG', name: 'Staging', type: 'inbound_staging',
+          canvasBounds: { x: 240, y: 15, width: 160, height: 80 }, color: '#eab308',
+          slots: [{ id: 'STG-A', code: 'STG-A', zoneId: 'ZONE-STAGING', type: 'staging_lane', canvasCoords: { x: 250, y: 30, width: 95, height: 50 }, dimensions: { lengthIn: 360, widthIn: 120, heightIn: 96 }, maxWeightLbs: 45000, allowedClasses: ['ambient', 'chilled', 'frozen', 'hazmat'], groundOnlyAllowed: true, status: 'available' }],
+        },
+        {
+          id: 'ZONE-RACKS', code: 'RACK', name: 'Pallet Racking', type: 'high_bay_rack',
+          canvasBounds: { x: 20, y: 120, width: 380, height: 120 }, color: '#64748b',
+          slots: [1, 2, 3, 4].map((bay) => ({
+            id: `R01-B0${bay}-L1-A`, code: `R01-B0${bay}-L1-A`, zoneId: 'ZONE-RACKS', type: 'rack_bin' as const,
+            aisle: 'R01', bay: `B0${bay}`, level: 1, position: 'A' as const,
+            canvasCoords: { x: 30 + (bay - 1) * 90, y: 140, width: 80, height: 35 },
+            dimensions: { lengthIn: 48, widthIn: 40, heightIn: 68 }, maxWeightLbs: 2800,
+            allowedClasses: ['ambient' as const], groundOnlyAllowed: false, status: 'available' as const,
+          })),
+        },
+      ],
+    });
+  }
+
+  const handleImportWorkspaceFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      const facilityRaw = parsed.facility ?? (Array.isArray(parsed.zones) ? parsed : null);
+      if (!facilityRaw) throw new Error('JSON must include "facility" (with zones/slots) or a facility object.');
+      const importedFacility = validateImportedFacility(facilityRaw);
+      let importedManifest: InboundManifest | null = null;
+      if (parsed.manifest) importedManifest = validateImportedManifest(parsed.manifest);
+      setFacility(importedFacility);
+      setEntities([]);
+      setManifest(importedManifest);
+      setSolverResult(importedManifest ? solvePutawayManifest(importedFacility, importedManifest) : null);
+      setSelectedPalletId(importedManifest?.items[0]?.palletId ?? null);
+      setSelectedSlotId(null);
+      setEpcisEvents([]);
+      setDiscrepancies([]);
+      setNotification({ type: 'success', message: importedManifest ? `Imported workspace: ${importedFacility.name} with ${importedManifest.items.length} manifest item(s).` : `Imported facility: ${importedFacility.name}. Import or create a manifest to run putaway.` });
+    } catch (e) {
+      setNotification({ type: 'warn', message: e instanceof Error ? e.message : 'Failed to import workspace JSON.' });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleExportWorkspace = () => {
+    if (!displayedFacility) { setNotification({ type: 'warn', message: 'No workspace to export.' }); return; }
+    const payload = { exportedAt: new Date().toISOString(), product: 'product-06-warehouse-space-flow', facility: displayedFacility, manifest, solverResult };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `warehouse-workspace-${displayedFacility.code || 'export'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadTemplate = () => {
+    const template = {
+      _instructions: 'Edit this template: define your facility zones/slots and inbound manifest items. Then use Import workspace JSON in the planner.',
+      facility: createStarterFacility(),
+      manifest: {
+        manifestId: 'MANIFEST-001', deliveryOrderNumber: 'DO-001', carrierName: '', vehiclePlate: '', eta: new Date().toISOString(), dockAssigned: 'DOCK-01', stagingLaneAssigned: 'STG-A',
+        items: [{ palletId: 'PLT-001', barcode: '000000000001', sku: 'SKU-001', description: 'Example pallet', packageType: 'Standard GMA 48x40', dimensions: { lengthIn: 48, widthIn: 40, heightIn: 60 }, weightLbs: 1200, environmentalClass: 'ambient', groundOnly: false, stackable: true, customerAccount: '' }],
+      },
+    };
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'warehouse-workspace-template.json'; a.click(); URL.revokeObjectURL(url);
+  };
+
+  const handleCreateStarterWorkspace = () => {
+    const starter = createStarterFacility();
+    setFacility(starter);
+    setEntities([]);
+    setManifest(null);
+    setSolverResult(null);
+    setSelectedPalletId(null);
+    setSelectedSlotId(null);
+    setEpcisEvents([]);
+    setDiscrepancies([]);
+    setNotification({ type: 'success', message: `Created starter facility "${starter.name}". Import a manifest JSON or download the template to add inbound items.` });
+  };
+
   function importShared(shipment: Shipment): { facility: Facility; manifest: InboundManifest; solverResult: PutawaySolveSummary | null } {
     const incoming = inboundForShipment(shipment);
     const nextFacility = facilityForShipment(shipment, session?.resources ?? null);
@@ -244,6 +378,7 @@ export const Warehouse2DPlanner: React.FC<{ onWorkspaceChange?: (s: { facility: 
   const hasWorkspace = Boolean(displayedFacility && manifest);
   return (
     <div className="planner-container">
+      <input ref={fileInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImportWorkspaceFile(f); }} />
       {session?.selectedId && displayedFacility && manifest && <section className="execution-task" aria-labelledby="receiving-plan-title">
         <div className="execution-task-heading"><div><span className="execution-eyebrow">DESTINATION RECEIVING · DECLARED LOCAL FACILITY</span><h2 id="receiving-plan-title">Review receiving space</h2></div><button onClick={() => session.inspect('stage:warehouse')}>Inspect saved receiving plan</button></div>
         <p>{session.shipment?.reference ?? 'Loading selected shipment'} · {manifest.items.length} identified handling units · {displayedFacility.name}</p>
@@ -258,11 +393,21 @@ export const Warehouse2DPlanner: React.FC<{ onWorkspaceChange?: (s: { facility: 
 
       {!hasWorkspace && !session?.selectedId && (
         <section className="execution-task" aria-labelledby="warehouse-empty-title">
-          <div className="execution-task-heading"><div><span className="execution-eyebrow">STANDALONE MODE · NO DEMO DATA SEEDED</span><h2 id="warehouse-empty-title">Load a workspace to begin</h2></div></div>
-          <p className="execution-task-note">This planner does not auto-create a facility, manifest, or EPCIS events. Load an explicit demo workspace for evaluation, or open the app from a connected shipment session for real cross-product planning.</p>
+          <div className="execution-task-heading"><div><span className="execution-eyebrow">STANDALONE MODE</span><h2 id="warehouse-empty-title">Start a real workspace</h2></div></div>
+          <p className="execution-task-note">
+            Use this planner with <strong>your own data</strong> or as part of the connected Trucking suite.
+            For cross-product receiving, open a shipment from the suite/session (Cargo Fit → Warehouse → Yard/Dock).
+            For standalone planning, import a workspace JSON (facility + manifest), create a starter facility, or download a template to fill in.
+            Demo data is available only for evaluation and is explicitly labeled.
+          </p>
           <div className="execution-actions">
-            <button onClick={handleLoadDemoWorkspace}>Load demo workspace</button>
-            <button className="bridge-button" onClick={handleLoadSampleImport}>Load sample import (demo)</button>
+            <button onClick={() => fileInputRef.current?.click()}>Import workspace JSON</button>
+            <button className="bridge-button" onClick={handleCreateStarterWorkspace}>Create starter warehouse</button>
+            <button className="bridge-button" onClick={handleDownloadTemplate}>Download JSON template</button>
+          </div>
+          <div className="execution-actions" style={{ marginTop: 8, opacity: 0.9 }}>
+            <button className="bridge-button" onClick={handleLoadDemoWorkspace}>Load demo workspace (evaluation)</button>
+            <button className="bridge-button" onClick={handleLoadSampleImport}>Load sample import (evaluation)</button>
           </div>
         </section>
       )}
@@ -273,13 +418,19 @@ export const Warehouse2DPlanner: React.FC<{ onWorkspaceChange?: (s: { facility: 
         <div className="strip-group">
           <span className="strip-label">FACILITY:</span>
           <span className="strip-value">{displayedFacility.name} ({displayedFacility.code})</span>
-          <span className="strip-badge-live">{session?.selectedId ? 'DECLARED SCENARIO FACILITY' : 'INDEPENDENT FACILITY SIMULATOR'}</span>
+          <span className="strip-badge-live">{session?.selectedId ? 'DECLARED SCENARIO FACILITY' : 'STANDALONE WORKSPACE'}</span>
         </div>
 
         <div className="strip-group">
-          <span className="strip-label">CROSS-PRODUCT BRIDGE:</span>
-          <button className="bridge-button" disabled={Boolean(session?.selectedId)} onClick={handleLoadSampleImport} title="Load a sample import manifest in standalone mode (demo)">
-             Load sample import (demo)
+          <span className="strip-label">WORKSPACE:</span>
+          <button className="bridge-button" onClick={handleExportWorkspace} title="Download current facility/manifest/solver result as JSON">
+            Export JSON
+          </button>
+          <button className="bridge-button" disabled={Boolean(session?.selectedId)} onClick={() => fileInputRef.current?.click()} title="Import facility/manifest workspace JSON">
+            Import JSON
+          </button>
+          <button className="bridge-button" disabled={Boolean(session?.selectedId)} onClick={handleLoadSampleImport} title="Load a sample import manifest in standalone mode (evaluation only)">
+            Sample import (eval)
           </button>
         </div>
 
