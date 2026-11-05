@@ -28,4 +28,13 @@ describe('P06 Data-Driven HazMat Policy', () => {
     const r = applyHazmatPolicy('3', ['9'], p);
     expect(r.compatible).toBe(true);
   });
+
+  it('enforces maxQuantityByClass cap', () => {
+    const p = parseHazmatPolicy(JSON.stringify({ siteId: 'S1', maxQuantityByClass: { '3': 100 } }));
+    const ok = applyHazmatPolicy('3', [], p, 50);
+    expect(ok.compatible).toBe(true);
+    const bad = applyHazmatPolicy('3', [], p, 150);
+    expect(bad.compatible).toBe(false);
+    expect(bad.conflicts[0]).toContain('caps 3 at 100');
+  });
 });

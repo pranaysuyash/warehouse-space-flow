@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import {
-  matchCrossDockPallets,
-  SAMPLE_INBOUND_PALLETS,
-  SAMPLE_OUTBOUND_ORDERS,
-} from '../src/engine/crossDockMatching';
+import { matchCrossDockPallets } from '../src/engine/crossDockMatching';
+import { SAMPLE_INBOUND_PALLETS, SAMPLE_OUTBOUND_ORDERS } from './fixtures/crossDockSamples';
 
 describe('Inbound-to-Outbound Cross-Dock Direct Allocation (T-036)', () => {
   it('identifies eligible cross-dock pallets within the 4-hour departure window', () => {

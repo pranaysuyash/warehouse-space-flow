@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-10-30T12:40:14Z
+- Generated: 2026-11-05T09:57:58Z
 - Project: `trucking/products/product-06-warehouse-space-flow`
 - Provider: `openai`
 - Model: `text-embedding-3-small`
@@ -13,7 +13,7 @@
 - Operating doctrine: `OPERATING_DOCTRINE.md` v8.2 (sha256 `e14bab7b1964d8b7…`) — always applies
 - Project: `trucking/products/product-06-warehouse-space-flow`
 - Routing mechanism: agent-start doctrine-family router v1.1 (deterministic intent-signal model)
-- Generated at: 2026-10-30T12:40:14Z
+- Generated at: 2026-11-05T09:57:58Z
 - Generator: agent-start lib/doctrine_family.py
 
 Doctrine routing for this run (task intent not supplied; deferred):

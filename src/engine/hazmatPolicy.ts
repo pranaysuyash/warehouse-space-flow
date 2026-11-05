@@ -30,7 +30,8 @@ export function parseHazmatPolicy(json: string): HazmatPolicyConfig {
 export function applyHazmatPolicy(
   incomingClass: HazmatClass,
   existingClasses: HazmatClass[],
-  policy: HazmatPolicyConfig
+  policy: HazmatPolicyConfig,
+  incomingQuantity?: number
 ): { compatible: boolean; conflicts: string[] } {
   const conflicts: string[] = [];
   if (policy.forbiddenPairs) {
@@ -41,8 +42,9 @@ export function applyHazmatPolicy(
       }
     }
   }
-  if (policy.maxQuantityByClass && policy.maxQuantityByClass[incomingClass] !== undefined) {
-    // Quantity check is caller's responsibility; flag if exceeded count
+  const cap = policy.maxQuantityByClass?.[incomingClass];
+  if (cap !== undefined && incomingQuantity !== undefined && incomingQuantity > cap) {
+    conflicts.push(`Site policy caps ${incomingClass} at ${cap}; incoming ${incomingQuantity} exceeds cap.`);
   }
   return { compatible: conflicts.length === 0, conflicts };
 }
