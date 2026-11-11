@@ -107,7 +107,7 @@ export interface MoveableEntity {
   dimensions: Dimensions3D;
   weightLbs: number;
   environmentalClass: EnvironmentalClass;
-  /** Required storage temperature range for the commodity (°F). If omitted, derived from environmentalClass. */
+  /** Declared accepted commodity temperature interval (°F); class-only defaults are illustrative, not a declaration. */
   storageTempRangeF?: { min: number; max: number };
   hazmatClass?: string;
   groundOnly: boolean;
@@ -130,7 +130,7 @@ export interface InboundPalletItem {
   dimensions: Dimensions3D;
   weightLbs: number;
   environmentalClass: EnvironmentalClass;
-  /** Required storage temperature range for the commodity (°F). If omitted, derived from environmentalClass. */
+  /** Declared accepted commodity temperature interval (°F); class-only defaults are illustrative, not a declaration. */
   storageTempRangeF?: { min: number; max: number };
   hazmatClass?: string;
   groundOnly: boolean;

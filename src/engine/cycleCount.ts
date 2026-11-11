@@ -13,6 +13,13 @@ export interface CycleCountItem {
   countedBy: string;
 }
 
+/** Blank input is unknown, not an observation that the slot is empty. */
+export function resolveManualCountObservation(palletId: string, explicitlyEmpty: boolean): { palletId: string | null } | null {
+  const entered = palletId.trim();
+  if (explicitlyEmpty) return entered ? null : { palletId: null };
+  return entered ? { palletId: entered } : null;
+}
+
 export function runCycleCount(
   slotOccupants: { slotId: string; occupantId: string | null; weightLbs: number | null }[],
   observed: { slotId: string; palletId: string | null; weightLbs: number | null }[],

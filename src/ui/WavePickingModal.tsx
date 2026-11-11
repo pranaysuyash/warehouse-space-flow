@@ -64,7 +64,7 @@ export const WavePickingModal: React.FC<WavePickingModalProps> = ({ isOpen, onCl
               Outbound Wave Picking &amp; TSP Pick-Path Optimizer
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
-              Rectilinear warehouse routing (2-Opt local search) &amp; FEFO lot date compliance for {activeWaveId}.
+              Sample wave {activeWaveId}. The route and lot check are illustrative; no stock is picked or released.
             </p>
           </div>
           <button
@@ -236,7 +236,7 @@ export const WavePickingModal: React.FC<WavePickingModalProps> = ({ isOpen, onCl
               cursor: 'pointer',
             }}
           >
-            Release Pick Wave
+            Close sample wave
           </button>
         </div>
       </div>

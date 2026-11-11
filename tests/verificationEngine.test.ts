@@ -78,16 +78,31 @@ describe('P06 EPCIS publisher port', () => {
     verificationStatus: 'simulated' as const,
   };
 
-  it('no-op publisher leaves event simulated/observed (never falsely published)', async () => {
+  it('no-op publisher leaves a simulated event simulated', async () => {
     const out = await publishEpcisEvent(baseEvent, noopEpcisPublisher);
-    expect(out.verificationStatus).not.toBe('published');
+    expect(out.verificationStatus).toBe('simulated');
   });
 
-  it('successful publisher transitions to published', async () => {
+  it('never sends a simulated event, even to a successful publisher', async () => {
+    let calls = 0;
+    const out = await publishEpcisEvent(baseEvent, { async publish() { calls++; return { published: true }; } });
+    expect(calls).toBe(0);
+    expect(out.verificationStatus).toBe('simulated');
+  });
+
+  it('successful publisher transitions an observed event to published', async () => {
     const pub = { async publish() { return { published: true, receiptId: 'RCPT-1' }; } };
-    const out = await publishEpcisEvent(baseEvent, pub);
+    const out = await publishEpcisEvent({ ...baseEvent, verificationStatus: 'observed' }, pub);
     expect(out.verificationStatus).toBe('published');
     expect(out.verificationEvidence.notes).toContain('Published: RCPT-1');
+  });
+
+  it('keeps observed events observed when publishing fails and never republishes published events', async () => {
+    let calls = 0;
+    const failing = { async publish(): Promise<{ published: boolean }> { calls++; throw new Error('offline'); } };
+    expect((await publishEpcisEvent({ ...baseEvent, verificationStatus: 'observed' }, failing)).verificationStatus).toBe('observed');
+    expect((await publishEpcisEvent({ ...baseEvent, verificationStatus: 'published' }, failing)).verificationStatus).toBe('published');
+    expect(calls).toBe(1);
   });
 });
 
@@ -103,7 +118,7 @@ describe('P06 HttpEpcisPublisher adapter', () => {
     readPoint: 'urn:epc:id:sgln:0614141.00001.A1',
     bizLocation: 'urn:epc:id:sgln:0614141.00001.SLOT-A1',
     verificationEvidence: { scanType: 'BARCODE_2D_DATAMATRIX' as const, operatorId: 'OPR-1', verifiedTimestamp: new Date().toISOString(), notes: 'verified' },
-    verificationStatus: 'simulated' as const,
+    verificationStatus: 'observed' as const,
   };
 
   it('marks published only when 2xx JSON confirms published:true', async () => {

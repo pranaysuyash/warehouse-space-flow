@@ -4,6 +4,7 @@
  * and bay capacities to propose feasible warehouse storage plans.
  */
 
+import { isValidTemperatureRange, maintainedRangeFits } from './temperatureRange';
 import {
   Facility,
   InboundManifest,
@@ -276,21 +277,35 @@ export function checkSlotSuitability(
     };
   }
 
-  // 1a. Temperature range compatibility: the slot's maintained range must cover
-  // the commodity's required storage range. A 34F chilled room cannot hold frozen cargo.
+  // 1a. These are declared/modelled intervals, not measured storage temperatures.
+  if (item.storageTempRangeF && !isValidTemperatureRange(item.storageTempRangeF)) {
+    return { compatible: false, score: 0, isAlternative: false, reasons: [], violation: 'Commodity temperature range is invalid.' };
+  }
+  if (item.storageTempRangeF && !slot.temperatureRangeF) {
+    return { compatible: false, score: 0, isAlternative: false, reasons: [], violation: 'Slot temperature range is not declared for this temperature-constrained commodity.' };
+  }
+  if (!item.storageTempRangeF && !slot.temperatureRangeF) reasons.push('Commodity and slot temperature ranges are not declared; temperature compatibility is unknown.');
   if (slot.temperatureRangeF) {
     const itemRange = item.storageTempRangeF ?? defaultTempRangeForClass(item.environmentalClass);
-    // Overlap check: the slot's maintained range and the commodity's required range
-    // must overlap. A 34F chilled room cannot hold frozen cargo (ranges disjoint).
-    if (!(itemRange.min <= slot.temperatureRangeF.max && itemRange.max >= slot.temperatureRangeF.min)) {
+    const slotRange = slot.temperatureRangeF;
+    // Legacy class-only scenarios remain indicative; the default is not a commodity declaration.
+    const classOnlyMismatch = !item.storageTempRangeF && (itemRange.min > slotRange.max || itemRange.max < slotRange.min);
+    if (!isValidTemperatureRange(slotRange)) {
+      return { compatible: false, score: 0, isAlternative: false, reasons: [], violation: 'Declared slot temperature range is invalid.' };
+    }
+    if (item.storageTempRangeF ? !maintainedRangeFits(itemRange, slotRange) : classOnlyMismatch) {
       return {
         compatible: false,
         score: 0,
         isAlternative: false,
         reasons: [],
-        violation: `Commodity requires ${itemRange.min}–${itemRange.max}°F but slot maintains ${slot.temperatureRangeF.min}–${slot.temperatureRangeF.max}°F (temperature mismatch)`,
+        violation: item.storageTempRangeF
+          ? `Declared slot range ${slotRange.min}–${slotRange.max}°F is not contained within the commodity range ${itemRange.min}–${itemRange.max}°F (temperature mismatch).`
+          : `Illustrative ${item.environmentalClass} class range ${itemRange.min}–${itemRange.max}°F does not overlap declared slot range ${slotRange.min}–${slotRange.max}°F (temperature mismatch). Commodity limits are not declared.`,
       };
     }
+    if (!item.storageTempRangeF) reasons.push('Commodity temperature range is not declared; class-only screening is illustrative and does not verify safe storage.');
+    else reasons.push('Declared temperature ranges are compatible in the model; actual temperatures and product condition are not verified.');
   }
 
   // 1b. Yard slot policy: Exterior yard slots require containerized equipment or trailers

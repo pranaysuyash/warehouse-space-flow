@@ -296,7 +296,7 @@ export const Warehouse2DPlanner: React.FC<{ onWorkspaceChange?: (s: { facility: 
 
     if (result.success && result.slotUpdated && result.eventGenerated) {
       setFacility(newFacility);
-      // Publish via the configured publisher (noop by default -> stays simulated/observed, never falsely "published").
+      // Simulated events stay local; only independently observed events can be published.
       const publisher = (window as unknown as { __EPCIS_PUBLISHER__?: { publish: (e: unknown) => Promise<{ published: boolean; receiptId?: string; error?: string }> } }).__EPCIS_PUBLISHER__ ?? noopEpcisPublisher;
       const publishedEvent = await publishEpcisEvent(result.eventGenerated!, publisher as never);
       setEpcisEvents((prev) => [publishedEvent, ...prev]);
@@ -772,7 +772,7 @@ export const Warehouse2DPlanner: React.FC<{ onWorkspaceChange?: (s: { facility: 
                       disabled={!selectedRecommendation.targetSlotId}
                       onClick={() => handleVerifyPutaway(selectedRecommendation, false)}
                     >
-                       Scan Barcode & Confirm Putaway
+                       Simulate scan &amp; confirm putaway
                     </button>
                     <button
                       className="btn-scan-error"

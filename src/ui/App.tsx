@@ -62,7 +62,7 @@ export function App() {
               className={`toggle-btn ${viewMode === '3d' ? 'active' : ''}`}
               onClick={() => setViewMode('3d')}
             >
-               3D Axonometric Digital Twin
+               3D Warehouse View
             </button>
             <button
               className="toggle-btn"
@@ -97,12 +97,12 @@ export function App() {
         {/* Dynamic Operational Content */}
         <div hidden={viewMode !== '2d'}><Warehouse2DPlanner onWorkspaceChange={(snapshot) => setWorkspaceSnapshot(snapshot)} /></div>
         {viewMode === '3d' && (
-          sessionFacility ? (
-            <><p className="execution-task-note">Facility geometry study for the selected shipment scenario. This view does not change shipment reservations or establish physical occupancy.</p><WarehouseIsometricCanvas facility={sessionFacility} /></>
+          modalFacility ? (
+            <><p className="execution-task-note">The 3D view uses the current facility's workspace locations and status. Positions follow its 2D layout; heights are schematic.</p><WarehouseIsometricCanvas facility={modalFacility} /></>
           ) : (
             <div className="execution-task-note" style={{ padding: 24 }}>
-              <h3 style={{ marginTop: 0 }}>3D Digital Twin</h3>
-              <p>Load a demo workspace or connect a shipment session in the 2D planner to view facility geometry. No demo facility is auto-seeded in standalone mode.</p>
+              <h3 style={{ marginTop: 0 }}>3D Warehouse View</h3>
+              <p>Open a facility in the 2D planner or connect a shipment to view its warehouse locations.</p>
             </div>
           )
         )}
@@ -135,6 +135,7 @@ export function App() {
         isOpen={isGoodsLedgerModalOpen}
         onClose={() => setIsGoodsLedgerModalOpen(false)}
         manifest={modalManifest}
+        scenarioReceipt={session?.shipment?.delivery}
       />
     </div>
   );

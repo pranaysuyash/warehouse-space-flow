@@ -2,24 +2,30 @@ import React, { useState } from 'react';
 import {
   matchCrossDockPallets,
   CrossDockMatchRecord,
+  type InboundReceiptPallet,
+  type OutboundDepartureOrder,
 } from '../engine/crossDockMatching';
 
 export interface CrossDockModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirmMatches?: (matches: CrossDockMatchRecord[]) => void;
+  inboundPallets?: InboundReceiptPallet[];
+  outboundOrders?: OutboundDepartureOrder[];
 }
 
 export const CrossDockModal: React.FC<CrossDockModalProps> = ({
   isOpen,
   onClose,
   onConfirmMatches,
+  inboundPallets,
+  outboundOrders,
 }) => {
   const [maxDepartureHours, setMaxDepartureHours] = useState<number>(4.0);
 
   if (!isOpen) return null;
 
-  const summary = matchCrossDockPallets(undefined, undefined, maxDepartureHours);
+  const summary = matchCrossDockPallets(inboundPallets ?? [], outboundOrders ?? [], maxDepartureHours);
 
   const handleConfirm = () => {
     if (onConfirmMatches) {
@@ -80,7 +86,7 @@ export const CrossDockModal: React.FC<CrossDockModalProps> = ({
               🔄 Inbound-to-Outbound Cross-Dock Direct Allocation
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#94a3b8' }}>
-              Bypasses Rack Storage · Eliminates Double-Handling Labor · Reduces Dwell Time
+              Scenario matching only. No stock movement or operational dispatch occurs here.
             </p>
           </div>
           <button
@@ -101,6 +107,7 @@ export const CrossDockModal: React.FC<CrossDockModalProps> = ({
 
         {/* Content Body */}
         <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {(!inboundPallets?.length || !outboundOrders?.length) && <p>No inbound pallets or outbound orders supplied. Matching is unavailable.</p>}
           {/* Summary KPI Cards */}
           <div
             style={{
@@ -267,6 +274,7 @@ export const CrossDockModal: React.FC<CrossDockModalProps> = ({
             Cancel
           </button>
           <button
+            disabled={!onConfirmMatches || summary.matches.length === 0}
             onClick={handleConfirm}
             style={{
               padding: '8px 16px',
@@ -279,7 +287,7 @@ export const CrossDockModal: React.FC<CrossDockModalProps> = ({
               cursor: 'pointer',
             }}
           >
-            Dispatch Cross-Dock Moves ({summary.crossDockEligibleCount} Pallets)
+            Review matches ({summary.crossDockEligibleCount} Pallets)
           </button>
         </div>
       </div>

@@ -15,10 +15,20 @@ describe('P06 Temperature Compatibility', () => {
   });
 
   it('accepts chilled cargo in 34F room', () => {
-    const slot: any = { id: 'C2', code: 'C2', zoneId: 'Z', type: 'floor_bulk', canvasCoords: {x:0,y:0,width:1,height:1}, dimensions: {lengthIn:48,widthIn:40,heightIn:84}, maxWeightLbs: 3500, allowedClasses: ['chilled','frozen'], groundOnlyAllowed: true, status: 'available', temperatureRangeF: { min: 32, max: 38 } };
+    const slot: any = { id: 'C2', code: 'C2', zoneId: 'Z', type: 'floor_bulk', canvasCoords: {x:0,y:0,width:1,height:1}, dimensions: {lengthIn:48,widthIn:40,heightIn:84}, maxWeightLbs: 3500, allowedClasses: ['chilled','frozen'], groundOnlyAllowed: true, status: 'available', temperatureRangeF: { min: 34, max: 38 } };
     const item: any = { environmentalClass: 'chilled', packageType: 'pallet', weightLbs: 1000, dimensions: { lengthIn: 48, widthIn: 40, heightIn: 48 }, groundOnly: true };
     const r = checkSlotSuitability(item, slot);
     expect(r.compatible).toBe(true);
+  });
+
+  it('requires the entire maintained interval to fit within the declared commodity range', () => {
+    const slot: any = { id: 'C', code: 'C', zoneId: 'Z', type: 'floor_bulk', canvasCoords: {x:0,y:0,width:1,height:1}, dimensions: {lengthIn:48,widthIn:40,heightIn:84}, maxWeightLbs: 3500, allowedClasses: ['chilled'], groundOnlyAllowed: true, status: 'available', temperatureRangeF: { min: 32, max: 38 } };
+    const item: any = { environmentalClass: 'chilled', storageTempRangeF: {min: 34, max: 40}, packageType: 'pallet', weightLbs: 1000, dimensions: { lengthIn: 48, widthIn: 40, heightIn: 48 }, groundOnly: true };
+    expect(checkSlotSuitability(item, slot).compatible).toBe(false);
+    expect(checkSlotSuitability(item, {...slot, temperatureRangeF: { min: 34, max: 40 }}).compatible).toBe(true);
+    expect(checkSlotSuitability(item, {...slot, temperatureRangeF: undefined}).compatible).toBe(false);
+    expect(checkSlotSuitability(item, {...slot, temperatureRangeF: { min: 38, max: 32 }}).compatible).toBe(false);
+    expect(checkSlotSuitability({...item, storageTempRangeF: { min: NaN, max: 40 }}, slot).compatible).toBe(false);
   });
 
   it('skips temperature check when slot has no range', () => {
@@ -26,5 +36,6 @@ describe('P06 Temperature Compatibility', () => {
     const item: any = { environmentalClass: 'ambient', packageType: 'pallet', weightLbs: 1000, dimensions: { lengthIn: 48, widthIn: 40, heightIn: 48 }, groundOnly: true };
     const r = checkSlotSuitability(item, slot);
     expect(r.compatible).toBe(true);
+    expect(r.reasons.join(' ')).toContain('not declared');
   });
 });

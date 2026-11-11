@@ -1,6 +1,6 @@
 /**
  * Verification Engine & GS1 EPCIS 2.0 Event Generator
- * Closes the loop between planned reservations and physical barcode-verified putaway.
+ * Simulates scan-based putaway and models publication of independently observed events.
  */
 
 import {
@@ -12,6 +12,7 @@ import {
 } from './types';
 import { findSlotById, getAllSlots } from './spatialModel';
 import { bayCapacityForSlot, checkSlotSuitability } from './putawayEngine';
+import { transitionStatus } from './verificationStatus';
 
 export interface VerificationResult {
   success: boolean;
@@ -89,16 +90,18 @@ export async function publishEpcisEvent(
   event: EpcisEvent,
   publisher: EpcisPublisher = noopEpcisPublisher
 ): Promise<EpcisEvent> {
+  // A simulated scan is not physical evidence, even if a receiver would accept it.
+  if (event.verificationStatus !== 'observed') return event;
   try {
     const result = await publisher.publish(event);
     if (result.published === true) {
-      return { ...event, verificationStatus: 'published' as EpcisEvent['verificationStatus'], verificationEvidence: { ...event.verificationEvidence, notes: `${event.verificationEvidence.notes} Published: ${result.receiptId ?? 'ok'}.` } };
+      return { ...event, verificationStatus: transitionStatus('observed', 'published'), verificationEvidence: { ...event.verificationEvidence, notes: `${event.verificationEvidence.notes} Published: ${result.receiptId ?? 'ok'}.` } };
     }
   } catch (e) {
     // Never let publisher failures break local verification or imply publication.
-    return { ...event, verificationStatus: (event.verificationStatus === 'simulated' ? 'observed' : event.verificationStatus) as EpcisEvent['verificationStatus'] };
+    return event;
   }
-  return { ...event, verificationStatus: (event.verificationStatus === 'simulated' ? 'observed' : event.verificationStatus) as EpcisEvent['verificationStatus'] };
+  return event;
 }
 
 export function executeScanVerification(
@@ -192,14 +195,14 @@ export function executeScanVerification(
       scanType: 'BARCODE_2D_DATAMATRIX',
       operatorId,
       verifiedTimestamp: timestamp,
-      notes: `Putaway verified at bin ${assignedSlot.code}. Mass: ${recommendation.weightLbs} lbs.`,
+      notes: `Simulated putaway at bin ${assignedSlot.code}. Scenario mass: ${recommendation.weightLbs} lbs; no physical scan observed.`,
     },
     verificationStatus: 'simulated',
   };
 
   return {
     success: true,
-    message: ` Putaway Verified: Pallet ${recommendation.palletId} confirmed at bin ${assignedSlot.code}. GS1 EPCIS event generated locally (verification status: simulated; external publication requires connector).`,
+    message: `Simulated putaway: Pallet ${recommendation.palletId} placed at bin ${assignedSlot.code} in the local scenario. No physical scan or external publication occurred.`,
     slotUpdated: assignedSlot,
     eventGenerated: epcisEvent,
   };

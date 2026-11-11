@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { computeFacilityMetrics } from '../engine/spatialModel';
+import { buildFacilityScene } from '../engine/facilityScene';
 import {
   type CameraConfig,
-  type PalletRackBay,
-  buildWarehouseScene,
   projectSceneFaces,
-  buildWarehouseBlueprintAnnotations,
 } from '../engine/warehouseIsometric';
 
 export interface WarehouseIsometricCanvasProps {
-  /** Facility to derive KPIs from. When omitted, falls back to canonical DC-04 metrics. */
+  /** Active workspace facility. */
   facility?: import('../engine/types').Facility;
   /** Pre-computed metrics. When omitted, computed from facility. */
   metrics?: import('../engine/spatialModel').FacilityMetrics;
@@ -33,9 +31,7 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
   const [showRacks, setShowRacks] = useState<boolean>(true);
   const [showDocks, setShowDocks] = useState<boolean>(true);
-  const [showForklifts, setShowForklifts] = useState<boolean>(true);
-  const [velocityFilter, setVelocityFilter] = useState<'all' | 'A' | 'B' | 'C'>('all');
-  const [selectedBay, setSelectedBay] = useState<PalletRackBay | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string>('');
   const [hoveredPart, setHoveredPart] = useState<string | null>(null);
   const derivedMetrics = useMemo(() => {
     if (metricsProp) return metricsProp;
@@ -48,14 +44,13 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
   // Drag Orbit Handling
   const svgRef = useRef<SVGSVGElement>(null);
   const isDraggingRef = useRef(false);
+  const pointerCapturedRef = useRef(false);
   const lastMousePosRef = useRef({ x: 0, y: 0 });
 
   const handlePointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
-    if (svgRef.current) {
-      svgRef.current.setPointerCapture(e.pointerId);
-    }
+    pointerCapturedRef.current = false;
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -63,6 +58,11 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
     const dx = e.clientX - lastMousePosRef.current.x;
     const dy = e.clientY - lastMousePosRef.current.y;
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+    if (dx === 0 && dy === 0) return;
+    if (!pointerCapturedRef.current && svgRef.current) {
+      svgRef.current.setPointerCapture(e.pointerId);
+      pointerCapturedRef.current = true;
+    }
 
     setCamera((prev) => {
       let newAzimuth = (prev.azimuthDeg - dx * 0.45) % 360;
@@ -79,12 +79,13 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
   const handlePointerUp = (e: React.PointerEvent) => {
     isDraggingRef.current = false;
     try {
-      if (svgRef.current) {
+      if (svgRef.current && pointerCapturedRef.current) {
         svgRef.current.releasePointerCapture(e.pointerId);
       }
     } catch {
       // ignore
     }
+    pointerCapturedRef.current = false;
   };
 
   const handleWheel = (e: React.WheelEvent) => {
@@ -117,24 +118,9 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
   }, [autoRotate]);
 
   // Project Scene Faces
-  const { projectedFaces, bays, dimensionLines, technicalPins } = useMemo(() => {
-    const { faces: rawFaces, bays: generatedBays } = buildWarehouseScene(
-      showRacks,
-      showDocks,
-      showForklifts,
-      velocityFilter
-    );
-
-    const projected = projectSceneFaces(rawFaces, camera);
-    const annotations = buildWarehouseBlueprintAnnotations(camera);
-
-    return {
-      projectedFaces: projected,
-      bays: generatedBays,
-      dimensionLines: annotations.dimensionLines,
-      technicalPins: annotations.technicalPins,
-    };
-  }, [showRacks, showDocks, showForklifts, velocityFilter, camera]);
+  const scene = useMemo(() => facility ? buildFacilityScene(facility, { showRacks, showDocks }) : null, [facility, showRacks, showDocks]);
+  const projectedFaces = useMemo(() => projectSceneFaces(scene?.faces ?? [], camera), [scene, camera]);
+  const selectedSlot = scene?.slots.find(item => item.slot.id === selectedSlotId)?.slot;
 
   const isBlueprint = camera.renderMode === 'blueprint';
 
@@ -143,7 +129,7 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
       {/* Top Controls Bar */}
       <div className="wh-hud-bar">
         <div className="hud-left">
-          <span className="badge-tech">SVG 3D WAREHOUSE ENGINE</span>
+          <span className="badge-tech">{facility?.name ?? 'WAREHOUSE VIEW'}</span>
           <span className="hud-sub">
             Azimuth: {camera.azimuthDeg}° · Elevation: {camera.elevationDeg}° · {projectedFaces.length} Faces
           </span>
@@ -194,38 +180,38 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
                Docks
             </button>
             <button
-              className={`btn-pill ${showForklifts ? 'active' : ''}`}
-              onClick={() => setShowForklifts(!showForklifts)}
-              title="Toggle Forklifts"
+              className="btn-pill"
+              disabled
+              title="Equipment positions are not provided by this workspace"
             >
-               Forklifts
+               Equipment positions unavailable
             </button>
           </div>
 
           {/* Velocity Class Filters */}
           <div className="btn-group">
-            <span className="filter-label">VELOCITY:</span>
+            <span className="filter-label">VELOCITY DATA NOT PROVIDED:</span>
             <button
-              className={`btn-filter ${velocityFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setVelocityFilter('all')}
+              className="btn-filter active"
+              disabled
             >
               All
             </button>
             <button
-              className={`btn-filter ${velocityFilter === 'A' ? 'active green' : ''}`}
-              onClick={() => setVelocityFilter('A')}
+              className="btn-filter"
+              disabled
             >
               Class A (Fast)
             </button>
             <button
-              className={`btn-filter ${velocityFilter === 'B' ? 'active cyan' : ''}`}
-              onClick={() => setVelocityFilter('B')}
+              className="btn-filter"
+              disabled
             >
               Class B
             </button>
             <button
-              className={`btn-filter ${velocityFilter === 'C' ? 'active amber' : ''}`}
-              onClick={() => setVelocityFilter('C')}
+              className="btn-filter"
+              disabled
             >
               Class C
             </button>
@@ -233,12 +219,18 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
         </div>
       </div>
 
+      <p>Positions follow the facility's 2D workspace layout. Heights are schematic; slot ratings and occupancy are declared workspace data.</p>
+      {scene && scene.invalidSlotIds.length > 0 && <p role="status">{scene.invalidSlotIds.length} location(s) have missing or invalid 2D coordinates and are not shown.</p>}
+      {scene && scene.slots.length > 0 && <label>Inspect location <select aria-label="Inspect warehouse location" value={selectedSlot ? selectedSlotId : ''} onChange={event => setSelectedSlotId(event.target.value)}><option value="">Select a location</option>{scene.slots.map(({ slot }) => <option key={slot.id} value={slot.id}>{slot.code} · {slot.status.replaceAll('_', ' ')}</option>)}</select></label>}
+
       {/* Main Vector SVG Area */}
       <div className="wh-svg-container" onWheel={handleWheel}>
         <svg
           ref={svgRef}
           viewBox="0 0 940 500"
           className={`wh-svg ${isBlueprint ? 'blueprint-canvas' : ''}`}
+          role="img"
+          aria-label={`3D layout for ${facility?.name ?? 'warehouse'}`}
           xmlns="http://www.w3.org/2000/svg"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
@@ -279,85 +271,12 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
                 onMouseEnter={() => setHoveredPart(face.partName)}
                 onMouseLeave={() => setHoveredPart(null)}
                 onClick={() => {
-                  const bayMatch = bays.find((b) => face.partName.includes(b.bayCode));
-                  if (bayMatch) setSelectedBay(bayMatch);
+                  const slotId = scene?.faceSlotIds.get(face.id);
+                  if (slotId) setSelectedSlotId(slotId);
                 }}
               />
             ))}
           </g>
-
-          {/* Blueprint Overlay Annotations */}
-          {isBlueprint && (
-            <g className="wh-annotations-layer">
-              {dimensionLines.map((dim) => (
-                <g key={dim.id}>
-                  <line
-                    x1={dim.start[0]}
-                    y1={dim.start[1]}
-                    x2={dim.end[0]}
-                    y2={dim.end[1]}
-                    stroke="#38bdf8"
-                    strokeWidth="1.2"
-                  />
-                  <rect
-                    x={dim.mid[0] - 40}
-                    y={dim.mid[1] - 9}
-                    width="80"
-                    height="18"
-                    rx="4"
-                    fill="rgba(3, 25, 38, 0.9)"
-                    stroke="#38bdf8"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={dim.mid[0]}
-                    y={dim.mid[1] + 3}
-                    textAnchor="middle"
-                    fill="#38bdf8"
-                    fontSize="9.5"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                  >
-                    {dim.label}
-                  </text>
-                </g>
-              ))}
-
-              {technicalPins.map((pin) => (
-                <g key={pin.id}>
-                  <circle cx={pin.position[0]} cy={pin.position[1]} r="5" fill="none" stroke="#38bdf8" strokeWidth="1.5" />
-                  <circle cx={pin.position[0]} cy={pin.position[1]} r="2" fill="#38bdf8" />
-                  <polyline
-                    points={`${pin.position[0]},${pin.position[1]} ${pin.pinEnd[0]},${pin.pinEnd[1]} ${pin.pinEnd[0] + 35},${pin.pinEnd[1]}`}
-                    fill="none"
-                    stroke="#38bdf8"
-                    strokeWidth="1.2"
-                    strokeDasharray="2,2"
-                  />
-                  <rect
-                    x={pin.pinEnd[0]}
-                    y={pin.pinEnd[1] - 18}
-                    width="120"
-                    height="18"
-                    rx="3"
-                    fill="rgba(3, 25, 38, 0.9)"
-                    stroke="#38bdf8"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={pin.pinEnd[0] + 6}
-                    y={pin.pinEnd[1] - 5}
-                    fill="#f8fafc"
-                    fontSize="9"
-                    fontFamily="monospace"
-                    fontWeight="bold"
-                  >
-                    {pin.label}
-                  </text>
-                </g>
-              ))}
-            </g>
-          )}
 
           {/* Compass Radar */}
           <g transform="translate(60, 450)">
@@ -375,35 +294,17 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
           </g>
         </svg>
 
-        {/* Selected Bay Floating Cyber-HUD Dossier */}
-        {selectedBay && (
-          <div className="bay-dossier-card">
+        {selectedSlot && (
+          <div className="bay-dossier-card" role="region" aria-label="Selected warehouse location">
             <div className="dossier-hdr">
-              <div>
-                <span className="badge-bay">PALLET RACK BAY {selectedBay.bayCode}</span>
-                <h4>{selectedBay.sku}</h4>
-              </div>
-              <button className="btn-close" onClick={() => setSelectedBay(null)}></button>
+              <div><span className="badge-bay">LOCATION {selectedSlot.code}</span><h4>{selectedSlot.status.replaceAll('_', ' ')}</h4></div>
+              <button className="btn-close" aria-label="Close location details" onClick={() => setSelectedSlotId('')}>×</button>
             </div>
             <div className="dossier-metrics-grid">
-              <div className="metric">
-                <span>Aisle / Tier:</span>
-                <strong>{selectedBay.aisle} · Tier {selectedBay.tier}</strong>
-              </div>
-              <div className="metric">
-                <span>Velocity Class:</span>
-                <strong className={selectedBay.velocityClass === 'A' ? 'text-emerald' : 'text-cyan'}>
-                  Class {selectedBay.velocityClass} ({selectedBay.velocityClass === 'A' ? 'Fast' : selectedBay.velocityClass === 'B' ? 'Medium' : 'Slow'})
-                </strong>
-              </div>
-              <div className="metric">
-                <span>Unit Weight:</span>
-                <strong>{selectedBay.weightLbs.toLocaleString()} lbs</strong>
-              </div>
-              <div className="metric">
-                <span>Beam Rating:</span>
-                <strong className="text-emerald">5,000 lbs (Compliant)</strong>
-              </div>
+              <div className="metric"><span>Aisle / Level:</span><strong>{selectedSlot.aisle ?? 'Not provided'} · {selectedSlot.level ?? 'Not provided'}</strong></div>
+              <div className="metric"><span>Occupant:</span><strong>{selectedSlot.currentOccupantId ?? selectedSlot.reservedPalletId ?? 'Not provided'}</strong></div>
+              <div className="metric"><span>Declared current weight:</span><strong>{selectedSlot.currentWeightLbs == null ? 'Not provided' : `${selectedSlot.currentWeightLbs.toLocaleString()} lbs`}</strong></div>
+              <div className="metric"><span>Declared slot rating:</span><strong>{Number.isFinite(selectedSlot.maxWeightLbs) ? `${selectedSlot.maxWeightLbs.toLocaleString()} lbs` : 'Not provided'}</strong></div>
             </div>
           </div>
         )}
@@ -412,24 +313,24 @@ export const WarehouseIsometricCanvas: React.FC<WarehouseIsometricCanvasProps> =
       {/* Facility Operational Metrics Bar */}
       <div className="wh-kpi-footer">
         <div className="kpi-card">
-          <span className="kpi-k">Total Rack Capacity</span>
-          <span className="kpi-v text-cyan">{derivedMetrics ? `${derivedMetrics.totalSlots} Slots` : '48 Bays'}</span>
+          <span className="kpi-k">Total Locations</span>
+          <span className="kpi-v text-cyan">{derivedMetrics ? `${derivedMetrics.totalSlots} locations` : 'Not provided'}</span>
         </div>
         <div className="kpi-card">
           <span className="kpi-k">Slotting Occupancy</span>
-          <span className="kpi-v text-emerald">{derivedMetrics ? `${derivedMetrics.occupancyPercent}% (${derivedMetrics.occupiedSlots} / ${derivedMetrics.totalSlots})` : '100% (48 / 48)'}</span>
+          <span className="kpi-v text-emerald">{derivedMetrics ? `${derivedMetrics.occupancyPercent}% (${derivedMetrics.occupiedSlots} occupied, ${derivedMetrics.reservedSlots} reserved / ${derivedMetrics.totalSlots})` : 'Not provided'}</span>
         </div>
         <div className="kpi-card">
-          <span className="kpi-k">Total Stored Mass</span>
-          <span className="kpi-v">{derivedMetrics ? `${derivedMetrics.totalWeightCapacityLbs.toLocaleString()} lbs` : '88,800 lbs'}</span>
+          <span className="kpi-k">Sum of slot weight ratings (not stored mass or shared capacity)</span>
+          <span className="kpi-v">{derivedMetrics ? `${derivedMetrics.totalWeightCapacityLbs.toLocaleString()} lbs` : 'Not provided'}</span>
         </div>
         <div className="kpi-card">
-          <span className="kpi-k">Dock Doors / Staging</span>
-          <span className="kpi-v text-amber">3 Cross-Dock Lanes</span>
+          <span className="kpi-k">Dock locations</span>
+          <span className="kpi-v text-amber">{facility ? facility.zones.flatMap(zone => zone.slots).filter(slot => slot.type === 'dock_door').length : 'Not provided'}</span>
         </div>
         <div className="kpi-card">
-          <span className="kpi-k">Active MHE</span>
-          <span className="kpi-v">1 Electric Forklift</span>
+          <span className="kpi-k">Equipment positions</span>
+          <span className="kpi-v">Not provided</span>
         </div>
       </div>
     </div>
