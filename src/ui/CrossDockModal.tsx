@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { IconRotateCw, IconX } from './icons';
 import {
   matchCrossDockPallets,
   CrossDockMatchRecord,
@@ -81,9 +82,10 @@ export const CrossDockModal: React.FC<CrossDockModalProps> = ({
           <div>
             <h3
               id="cross-dock-title"
-              style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#38bdf8' }}
+              style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              🔄 Inbound-to-Outbound Cross-Dock Direct Allocation
+              <IconRotateCw size={16} />
+              Inbound-to-Outbound Cross-Dock Direct Allocation
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#94a3b8' }}>
               Scenario matching only. No stock movement or operational dispatch occurs here.
@@ -101,7 +103,7 @@ export const CrossDockModal: React.FC<CrossDockModalProps> = ({
               padding: '4px 8px',
             }}
           >
-            ✕
+            <IconX size={18} />
           </button>
         </div>
 
@@ -225,7 +227,7 @@ export const CrossDockModal: React.FC<CrossDockModalProps> = ({
                         fontFamily: 'monospace',
                       }}
                     >
-                      {m.inboundDoor} ➔ {m.outboundDoor}
+                      {m.inboundDoor} -&gt; {m.outboundDoor}
                     </span>
                     <strong style={{ fontSize: '13px', color: '#f8fafc' }}>{m.inboundPalletId}</strong>
                     <span style={{ fontSize: '11px', color: '#38bdf8' }}>({m.sku})</span>

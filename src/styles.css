@@ -232,7 +232,7 @@ body {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .btn-pill:hover, .btn-filter:hover {
@@ -434,7 +434,7 @@ body {
   padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .toggle-btn.active {
@@ -447,7 +447,7 @@ body {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  color: #c084fc;
+  color: #2dd4bf;
   background: rgba(192, 132, 252, 0.15);
   border: 1px solid rgba(192, 132, 252, 0.3);
   padding: 1px 6px;
@@ -511,12 +511,12 @@ body {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .bridge-button:hover {
   background: rgba(192, 132, 252, 0.25);
-  border-color: #c084fc;
+  border-color: #2dd4bf;
 }
 
 .metrics-pills {
@@ -666,7 +666,7 @@ body {
   border-radius: 6px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .stat-box:hover, .stat-box.active {
@@ -704,7 +704,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .btn-action.primary {
@@ -772,7 +772,7 @@ body {
   border-radius: 6px;
   padding: 10px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -999,7 +999,7 @@ body {
   padding: 6px;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .tab-btn.active {
@@ -1069,7 +1069,7 @@ body {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
 }
 
 .btn-scan-confirm:hover:not(:disabled) {

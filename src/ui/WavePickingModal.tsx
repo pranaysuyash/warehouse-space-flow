@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { IconX, IconAlertCircle, IconCheck } from './icons';
 import {
   optimizeWavePickPath,
   SAMPLE_OUTBOUND_WAVE_ITEMS,
@@ -79,7 +80,7 @@ export const WavePickingModal: React.FC<WavePickingModalProps> = ({ isOpen, onCl
             }}
             aria-label="Close"
           >
-            ✕
+            <IconX size={18} />
           </button>
         </div>
 
@@ -144,7 +145,7 @@ export const WavePickingModal: React.FC<WavePickingModalProps> = ({ isOpen, onCl
               TSP-Sequenced Aisle Pick Path (Turn-by-Turn Order):
             </h4>
             <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-              Depot Staging (0,0) ➔ Aisle Sequence ➔ Dispatch Dock Door
+              Depot Staging (0,0) -&gt; Aisle Sequence -&gt; Dispatch Dock Door
             </span>
           </div>
 
@@ -201,9 +202,12 @@ export const WavePickingModal: React.FC<WavePickingModalProps> = ({ isOpen, onCl
                           cursor: 'pointer',
                           background: it.isQuarantined ? '#ef4444' : '#334155',
                           color: it.isQuarantined ? '#ffffff' : '#94a3b8',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
                         }}
                       >
-                        {it.isQuarantined ? 'Quarantined 🚫' : 'Clear ✓'}
+                        {it.isQuarantined ? <><IconAlertCircle size={11} /> Quarantined</> : <><IconCheck size={11} /> Clear</>}
                       </button>
                     </td>
                   </tr>

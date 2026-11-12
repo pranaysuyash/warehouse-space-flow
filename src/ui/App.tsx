@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SuiteDock } from './SuiteDock';
+import { IconRotateCw } from './icons';
 import { Warehouse2DPlanner } from './Warehouse2DPlanner';
 import { WarehouseIsometricCanvas } from './WarehouseIsometricCanvas';
 import { useShipmentSession } from '../suite/ShipmentSession';
@@ -80,15 +81,19 @@ export function App() {
               className="toggle-btn"
               onClick={() => setIsCrossDockModalOpen(true)}
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
                 background: '#059669',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,
               }}
             >
-              Cross-Dock Allocation 🔄
+              <IconRotateCw size={13} />
+              Cross-Dock Allocation
             </button>
-            <button className="toggle-btn" onClick={() => setIsCycleCountModalOpen(true)} style={{ background:'#7c3aed', color:'#fff', border:'none', fontWeight:600 }}>Cycle Count</button>
+            <button className="toggle-btn" onClick={() => setIsCycleCountModalOpen(true)} style={{ background:'#0e7490', color:'#fff', border:'none', fontWeight:600 }}>Cycle Count</button>
             <button className="toggle-btn" onClick={() => setIsAbcModalOpen(true)} style={{ background:'#d97706', color:'#fff', border:'none', fontWeight:600 }}>ABC Re-Slotting</button>
             <button className="toggle-btn" onClick={() => setIsGoodsLedgerModalOpen(true)} style={{ background:'#0f766e', color:'#fff', border:'none', fontWeight:600 }}>Goods Ledger</button>
           </div>
